@@ -81,6 +81,7 @@ const RegisterSchema = z.object({
     .min(2)
     .max(32)
     .regex(/^[a-zA-Z0-9_]+$/),
+  x_handle: z.string().min(1).max(32),
 });
 
 const LoginSchema = z.object({
@@ -117,7 +118,7 @@ app.post("/api/auth/register", async (req, res) => {
   const parsed = RegisterSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: "invalid_input" });
 
-  const { email, password, handle } = parsed.data;
+  const { email, password, handle, x_handle } = parsed.data;
   const emailLower = email.toLowerCase();
 
   // Check if handle is already taken
@@ -153,6 +154,7 @@ app.post("/api/auth/register", async (req, res) => {
     id: userId,
     email: emailLower,
     handle,
+    x_handle,
   });
 
   if (profileError) {
@@ -170,7 +172,7 @@ app.post("/api/auth/register", async (req, res) => {
 
   res.status(201).json({
     token: sessionData.session.access_token,
-    user: { id: userId, email: emailLower, handle },
+    user: { id: userId, email: emailLower, handle, x_handle },
   });
 });
 
@@ -401,6 +403,106 @@ app.post("/api/posts", requireAuth, async (req, res) => {
       updatedAt: post.updated_at,
     },
   });
+});
+
+const XVerifySchema = z.object({
+  x_post_url: z.string().url(),
+  verification_code: z.string().min(6).max(20),
+});
+
+// X verification endpoint
+app.post("/api/auth/verify-x", async (req, res) => {
+  const parsed = XVerifySchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ error: "invalid_input" });
+  }
+
+  const { x_post_url, verification_code } = parsed.data;
+
+  try {
+    // Extract X handle from URL (e.g., x.com/username/status/...)
+    const xHandleMatch = x_post_url.match(/x\.com\/([^\/]+)/i) || 
+                         x_post_url.match(/twitter\.com\/([^\/]+)/i);
+    if (!xHandleMatch) {
+      return res.status(400).json({ error: "invalid_x_url" });
+    }
+    const xHandle = xHandleMatch[1].toLowerCase();
+
+    // Check if this X handle is already registered
+    const { data: existingX } = await supabase
+      .from("profiles")
+      .select("id, x_handle")
+      .eq("x_handle", xHandle)
+      .single();
+
+    if (existingX) {
+      return res.status(409).json({ error: "x_handle_in_use", message: "This X account is already registered" });
+    }
+
+    // Use Deepseek API to scrape and verify the X post
+    const deepseekKey = process.env.DEEPSEEK_API_KEY;
+    if (!deepseekKey) {
+      return res.status(500).json({ error: "verification_service_unavailable" });
+    }
+
+    // Call Deepseek API to analyze the X post
+    const deepseekResponse = await fetch("https://api.deepseek.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${deepseekKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "deepseek-chat",
+        messages: [
+          {
+            role: "system",
+            content: "You are a verification assistant. Check if the provided X/Twitter post contains the exact verification code. Respond with ONLY a JSON object: {\"verified\": true/false, \"found_handle\": \"handle\" or null, \"reason\": \"explanation\"}"
+          },
+          {
+            role: "user",
+            content: `Check this X post URL: ${x_post_url}. Look for this exact verification code: "${verification_code}". Does the post exist and contain this code? Also extract the X handle (@username) from the post.`
+          }
+        ],
+        temperature: 0,
+      }),
+    });
+
+    if (!deepseekResponse.ok) {
+      console.error("Deepseek API error:", await deepseekResponse.text());
+      return res.status(500).json({ error: "verification_failed" });
+    }
+
+    const deepseekData = await deepseekResponse.json();
+    const content = deepseekData.choices?.[0]?.message?.content || "";
+    
+    let verificationResult;
+    try {
+      // Try to parse JSON from content
+      const jsonMatch = content.match(/\{[\s\S]*\}/);
+      verificationResult = jsonMatch ? JSON.parse(jsonMatch[0]) : { verified: false };
+    } catch {
+      verificationResult = { verified: content.toLowerCase().includes("verified: true") };
+    }
+
+    if (!verificationResult.verified) {
+      return res.status(400).json({ 
+        error: "verification_failed", 
+        message: "Could not verify X post. Ensure the post contains the exact verification code."
+      });
+    }
+
+    // Return success with X handle for registration
+    res.json({
+      verified: true,
+      x_handle: verificationResult.found_handle || xHandle,
+      message: "X account verified successfully"
+    });
+
+  } catch (error) {
+    console.error("X verification error:", error);
+    res.status(500).json({ error: "verification_error" });
+  }
 });
 
 app.listen(PORT, () => {
