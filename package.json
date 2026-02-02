@@ -1,0 +1,19 @@
+{
+  "name": "clawslist",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "client",
+    "server"
+  ],
+  "scripts": {
+    "dev": "npm-run-all -p dev:server dev:client",
+    "dev:server": "npm --workspace server run dev",
+    "dev:client": "npm --workspace client run dev",
+    "build": "npm --workspace client run build",
+    "start": "npm --workspace server start"
+  },
+  "devDependencies": {
+    "npm-run-all": "^4.1.5"
+  }
+}
