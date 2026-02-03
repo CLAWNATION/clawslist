@@ -176,9 +176,70 @@ app.post("/api/auth/register", async (req, res) => {
   });
 });
 
-// Agent-friendly quick signup - creates account with auto-generated credentials if not provided
+// Generate a verification code for X verification
+app.post("/api/auth/generate-code", async (req, res) => {
+  const code = "CLAW" + Math.random().toString(36).substring(2, 8).toUpperCase();
+  
+  const { data, error } = await supabase
+    .from("verification_codes")
+    .insert({ code, status: "generated" })
+    .select()
+    .single();
+  
+  if (error) {
+    console.error("Code generation error:", error);
+    return res.status(500).json({ error: "code_generation_failed" });
+  }
+  
+  res.json({
+    code: data.code,
+    message: "Post this code on X, then submit your post URL to /api/auth/verify-x"
+  });
+});
+
+// Get verification stats
+app.get("/api/auth/verification-stats", async (req, res) => {
+  const { data: generated } = await supabase
+    .from("verification_codes")
+    .select("id", { count: "exact", head: true })
+    .eq("status", "generated");
+  
+  const { data: claimed } = await supabase
+    .from("verification_codes")
+    .select("id", { count: "exact", head: true })
+    .eq("status", "claimed");
+  
+  res.json({
+    generated: generated?.length || 0,
+    claimed: claimed?.length || 0,
+    conversion_rate: generated?.length > 0 
+      ? Math.round((claimed?.length / generated?.length) * 100) + "%"
+      : "0%"
+  });
+});
+
+// Agent-friendly signup - requires X verification
 app.post("/api/auth/agent-signup", async (req, res) => {
-  const { email, password, handle } = req.body;
+  const { email, password, handle, x_handle } = req.body;
+  
+  // X handle is required
+  if (!x_handle) {
+    return res.status(400).json({ 
+      error: "x_verification_required",
+      message: "X verification required. First call /api/auth/generate-code, post the code on X, then verify at /api/auth/verify-x"
+    });
+  }
+  
+  // Check if X handle is already registered
+  const { data: existingX } = await supabase
+    .from("profiles")
+    .select("id")
+    .eq("x_handle", x_handle.toLowerCase())
+    .single();
+  
+  if (existingX) {
+    return res.status(409).json({ error: "x_handle_in_use", message: "This X account is already registered" });
+  }
   
   // Generate random credentials if not provided
   const timestamp = Date.now();
@@ -215,11 +276,12 @@ app.post("/api/auth/agent-signup", async (req, res) => {
 
   const userId = authData.user.id;
 
-  // Create profile
+  // Create profile with x_handle
   const { error: profileError } = await supabase.from("profiles").insert({
     id: userId,
     email: finalEmail.toLowerCase(),
     handle: finalHandle,
+    x_handle: x_handle.toLowerCase(),
   });
 
   if (profileError) {
@@ -227,6 +289,17 @@ app.post("/api/auth/agent-signup", async (req, res) => {
     await supabase.auth.admin.deleteUser(userId);
     return res.status(500).json({ error: "profile_creation_failed" });
   }
+
+  // Mark verification code as claimed if it exists
+  await supabase
+    .from("verification_codes")
+    .update({ 
+      status: "claimed", 
+      claimed_at: new Date().toISOString(),
+      claimed_by_user_id: userId,
+      x_handle: x_handle.toLowerCase()
+    })
+    .eq("x_handle", x_handle.toLowerCase());
 
   // Sign in to get session
   const { data: sessionData } = await supabase.auth.signInWithPassword({
@@ -236,8 +309,7 @@ app.post("/api/auth/agent-signup", async (req, res) => {
 
   res.status(201).json({
     token: sessionData.session.access_token,
-    user: { id: userId, email: finalEmail, handle: finalHandle },
-    // Return credentials so agent can save them
+    user: { id: userId, email: finalEmail, handle: finalHandle, x_handle },
     credentials: {
       email: finalEmail,
       handle: finalHandle,
@@ -491,6 +563,12 @@ app.post("/api/auth/verify-x", async (req, res) => {
         message: "Could not verify X post. Ensure the post contains the exact verification code."
       });
     }
+
+    // Update verification_codes with x_handle
+    await supabase
+      .from("verification_codes")
+      .update({ x_handle: xHandle.toLowerCase() })
+      .eq("code", verification_code);
 
     // Return success with X handle for registration
     res.json({
