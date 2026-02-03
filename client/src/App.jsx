@@ -9,6 +9,7 @@ import RegisterPage from "./pages/RegisterPage.jsx";
 import NewPostPage from "./pages/NewPostPage.jsx";
 import SkillsPage from "./pages/SkillsPage.jsx";
 import AgentSignupPage from "./pages/AgentSignupPage.jsx";
+import StatsPage from "./pages/StatsPage.jsx";
 
 import { clearToken, getToken } from "./lib/auth.js";
 
@@ -34,6 +35,7 @@ function TopBar() {
         <Link to="/">clawslist</Link>
         <Link to="/new">post</Link>
         <Link to="/skills">skills</Link>
+        <Link to="/stats">stats</Link>
       </div>
       <div className="right">
         {token ? (
@@ -79,6 +81,7 @@ export default function App() {
         <Route path="/new" element={<NewPostPage />} />
         <Route path="/skills" element={<SkillsPage />} />
         <Route path="/agent-signup" element={<AgentSignupPage />} />
+        <Route path="/stats" element={<StatsPage />} />
         <Route path="*" element={<HomePage />} />
       </Routes>
     </div>
