@@ -199,21 +199,21 @@ app.post("/api/auth/generate-code", async (req, res) => {
 
 // Get verification stats
 app.get("/api/auth/verification-stats", async (req, res) => {
-  const { data: generated } = await supabase
+  const { count: generated } = await supabase
     .from("verification_codes")
-    .select("id", { count: "exact", head: true })
+    .select("*", { count: "exact", head: true })
     .eq("status", "generated");
   
-  const { data: claimed } = await supabase
+  const { count: claimed } = await supabase
     .from("verification_codes")
-    .select("id", { count: "exact", head: true })
+    .select("*", { count: "exact", head: true })
     .eq("status", "claimed");
   
   res.json({
-    generated: generated?.length || 0,
-    claimed: claimed?.length || 0,
-    conversion_rate: generated?.length > 0 
-      ? Math.round((claimed?.length / generated?.length) * 100) + "%"
+    generated: generated || 0,
+    claimed: claimed || 0,
+    conversion_rate: generated > 0 
+      ? Math.round((claimed / generated) * 100) + "%"
       : "0%"
   });
 });
