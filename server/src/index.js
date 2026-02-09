@@ -482,7 +482,7 @@ const XVerifySchema = z.object({
   verification_code: z.string().min(6).max(20),
 });
 
-// X verification endpoint
+// X verification endpoint - uses X API v2 (platform-paid)
 app.post("/api/auth/verify-x", async (req, res) => {
   const parsed = XVerifySchema.safeParse(req.body);
   if (!parsed.success) {
@@ -492,13 +492,17 @@ app.post("/api/auth/verify-x", async (req, res) => {
   const { x_post_url, verification_code } = parsed.data;
 
   try {
-    // Extract X handle from URL (e.g., x.com/username/status/...)
+    // Extract X handle and tweet ID from URL
     const xHandleMatch = x_post_url.match(/x\.com\/([^\/]+)/i) || 
                          x_post_url.match(/twitter\.com\/([^\/]+)/i);
-    if (!xHandleMatch) {
-      return res.status(400).json({ error: "invalid_x_url" });
+    const tweetIdMatch = x_post_url.match(/status\/(\d+)/i);
+    
+    if (!xHandleMatch || !tweetIdMatch) {
+      return res.status(400).json({ error: "invalid_x_url", message: "URL must be x.com/username/status/12345 format" });
     }
+    
     const xHandle = xHandleMatch[1].toLowerCase();
+    const tweetId = tweetIdMatch[1];
 
     // Check if this X handle is already registered
     const { data: existingX } = await supabase
@@ -511,57 +515,84 @@ app.post("/api/auth/verify-x", async (req, res) => {
       return res.status(409).json({ error: "x_handle_in_use", message: "This X account is already registered" });
     }
 
-    // Use Deepseek API to scrape and verify the X post
-    const deepseekKey = process.env.DEEPSEEK_API_KEY;
-    if (!deepseekKey) {
-      return res.status(500).json({ error: "verification_service_unavailable" });
-    }
-
-    // Call Deepseek API to analyze the X post
-    const deepseekResponse = await fetch("https://api.deepseek.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${deepseekKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "deepseek-chat",
-        messages: [
-          {
-            role: "system",
-            content: "You are a verification assistant. Check if the provided X/Twitter post contains the exact verification code. Respond with ONLY a JSON object: {\"verified\": true/false, \"found_handle\": \"handle\" or null, \"reason\": \"explanation\"}"
-          },
-          {
-            role: "user",
-            content: `Check this X post URL: ${x_post_url}. Look for this exact verification code: "${verification_code}". Does the post exist and contain this code? Also extract the X handle (@username) from the post.`
-          }
-        ],
-        temperature: 0,
-      }),
-    });
-
-    if (!deepseekResponse.ok) {
-      console.error("Deepseek API error:", await deepseekResponse.text());
-      return res.status(500).json({ error: "verification_failed" });
-    }
-
-    const deepseekData = await deepseekResponse.json();
-    const content = deepseekData.choices?.[0]?.message?.content || "";
+    // Verify using X API v2 (platform pays for this)
+    const xBearerToken = process.env.X_API_BEARER_TOKEN;
     
-    let verificationResult;
-    try {
-      // Try to parse JSON from content
-      const jsonMatch = content.match(/\{[\s\S]*\}/);
-      verificationResult = jsonMatch ? JSON.parse(jsonMatch[0]) : { verified: false };
-    } catch {
-      verificationResult = { verified: content.toLowerCase().includes("verified: true") };
-    }
-
-    if (!verificationResult.verified) {
-      return res.status(400).json({ 
-        error: "verification_failed", 
-        message: "Could not verify X post. Ensure the post contains the exact verification code."
+    if (xBearerToken) {
+      // Use X API for reliable verification
+      const xApiResponse = await fetch(`https://api.twitter.com/2/tweets/${tweetId}?expansions=author_id&tweet.fields=text,created_at`, {
+        headers: {
+          "Authorization": `Bearer ${xBearerToken}`,
+        },
       });
+
+      if (!xApiResponse.ok) {
+        const errorText = await xApiResponse.text();
+        console.error("X API error:", errorText);
+        return res.status(500).json({ error: "verification_failed", message: "X API error - check credentials" });
+      }
+
+      const xData = await xApiResponse.json();
+      const tweetText = xData.data?.text || "";
+      
+      if (!tweetText.includes(verification_code)) {
+        return res.status(400).json({ 
+          error: "verification_failed", 
+          message: "Post does not contain the verification code. Ensure you posted the exact code."
+        });
+      }
+
+    } else {
+      // Fallback to Deepseek scraping if no X API key
+      const deepseekKey = process.env.DEEPSEEK_API_KEY;
+      if (!deepseekKey) {
+        return res.status(500).json({ error: "verification_service_unavailable", message: "No X API or Deepseek key configured" });
+      }
+
+      const deepseekResponse = await fetch("https://api.deepseek.com/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${deepseekKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "deepseek-chat",
+          messages: [
+            {
+              role: "system",
+              content: "You are a verification assistant. Check if the provided X/Twitter post contains the exact verification code. Respond with ONLY a JSON object: {\"verified\": true/false, \"found_handle\": \"handle\" or null, \"reason\": \"explanation\"}"
+            },
+            {
+              role: "user",
+              content: `Check this X post URL: ${x_post_url}. Look for this exact verification code: "${verification_code}". Does the post exist and contain this code?`
+            }
+          ],
+          temperature: 0,
+        }),
+      });
+
+      if (!deepseekResponse.ok) {
+        console.error("Deepseek API error:", await deepseekResponse.text());
+        return res.status(500).json({ error: "verification_failed" });
+      }
+
+      const deepseekData = await deepseekResponse.json();
+      const content = deepseekData.choices?.[0]?.message?.content || "";
+      
+      let verificationResult;
+      try {
+        const jsonMatch = content.match(/\{[\s\S]*\}/);
+        verificationResult = jsonMatch ? JSON.parse(jsonMatch[0]) : { verified: false };
+      } catch {
+        verificationResult = { verified: content.toLowerCase().includes("verified: true") };
+      }
+
+      if (!verificationResult.verified) {
+        return res.status(400).json({ 
+          error: "verification_failed", 
+          message: "Could not verify X post. Ensure the post contains the exact verification code."
+        });
+      }
     }
 
     // Update verification_codes with x_handle
@@ -573,7 +604,7 @@ app.post("/api/auth/verify-x", async (req, res) => {
     // Return success with X handle for registration
     res.json({
       verified: true,
-      x_handle: verificationResult.found_handle || xHandle,
+      x_handle: xHandle,
       message: "X account verified successfully"
     });
 
