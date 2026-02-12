@@ -6,9 +6,15 @@ import rateLimit from "express-rate-limit";
 import morgan from "morgan";
 import { z } from "zod";
 import { createClient } from "@supabase/supabase-js";
+import { TwitterApi } from "twitter-api-v2";
 import { generateReferenceCode, isValidReferenceCode, parseReferenceCode } from "./referenceCodes.js";
 
 dotenv.config();
+
+// Initialize X API client
+const xClient = process.env.X_BEARER_TOKEN 
+  ? new TwitterApi(process.env.X_BEARER_TOKEN)
+  : null;
 
 const app = express();
 
@@ -581,6 +587,104 @@ app.post("/api/auth/verify-x", async (req, res) => {
   } catch (error) {
     console.error("X verification error:", error);
     res.status(500).json({ error: "verification_error" });
+  }
+});
+
+// ==================== X API VERIFICATION (NEW) ====================
+
+// Helper: Extract tweet ID from X URL
+function extractTweetId(url) {
+  const match = url.match(/(?:x\.com|twitter\.com)\/[^/]+\/status\/(\d+)/i);
+  return match ? match[1] : null;
+}
+
+// X verification endpoint using X API v2
+app.post("/api/auth/verify-x-api", async (req, res) => {
+  const parsed = XVerifySchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ error: "invalid_input" });
+  }
+
+  const { x_post_url, verification_code } = parsed.data;
+
+  // Check if X API is configured
+  if (!xClient) {
+    return res.status(500).json({ error: "x_api_not_configured" });
+  }
+
+  try {
+    // Extract tweet ID from URL
+    const tweetId = extractTweetId(x_post_url);
+    if (!tweetId) {
+      return res.status(400).json({ error: "invalid_x_url", message: "Could not extract tweet ID from URL" });
+    }
+
+    // Fetch tweet from X API
+    const tweet = await xClient.v2.singleTweet(tweetId, {
+      expansions: ["author_id"],
+      "user.fields": ["username", "verified", "verified_type"],
+    });
+
+    if (!tweet.data) {
+      return res.status(404).json({ error: "tweet_not_found", message: "Tweet not found or not accessible" });
+    }
+
+    // Get author info
+    const author = tweet.includes?.users?.[0];
+    if (!author) {
+      return res.status(500).json({ error: "author_not_found" });
+    }
+
+    const xHandle = author.username.toLowerCase();
+
+    // Check if this X handle is already registered
+    const { data: existingX } = await supabase
+      .from("profiles")
+      .select("id, x_handle")
+      .eq("x_handle", xHandle)
+      .single();
+
+    if (existingX) {
+      return res.status(409).json({ error: "x_handle_in_use", message: "This X account is already registered" });
+    }
+
+    // Verify the code is in the tweet text
+    const tweetText = tweet.data.text || "";
+    if (!tweetText.includes(verification_code)) {
+      return res.status(400).json({ 
+        error: "code_not_found", 
+        message: "Verification code not found in tweet. Ensure you posted the exact code."
+      });
+    }
+
+    // Update verification_codes with x_handle
+    await supabase
+      .from("verification_codes")
+      .update({ 
+        x_handle: xHandle,
+        status: "verified",
+        verified_at: new Date().toISOString(),
+        tweet_id: tweetId
+      })
+      .eq("code", verification_code);
+
+    // Return success with X handle for registration
+    res.json({
+      verified: true,
+      x_handle: xHandle,
+      x_verified: author.verified || false,
+      message: "X account verified successfully via X API"
+    });
+
+  } catch (error) {
+    console.error("X API verification error:", error);
+    if (error.code === 404) {
+      return res.status(404).json({ error: "tweet_not_found", message: "Tweet not found" });
+    }
+    if (error.code === 401 || error.code === 403) {
+      return res.status(500).json({ error: "x_api_error", message: "X API authentication failed" });
+    }
+    res.status(500).json({ error: "verification_failed", message: error.message });
   }
 });
 
