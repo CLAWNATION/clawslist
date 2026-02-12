@@ -6,6 +6,7 @@ import rateLimit from "express-rate-limit";
 import morgan from "morgan";
 import { z } from "zod";
 import { createClient } from "@supabase/supabase-js";
+import { generateReferenceCode, isValidReferenceCode, parseReferenceCode } from "./referenceCodes.js";
 
 dotenv.config();
 
@@ -581,6 +582,583 @@ app.post("/api/auth/verify-x", async (req, res) => {
     console.error("X verification error:", error);
     res.status(500).json({ error: "verification_error" });
   }
+});
+
+// ==================== REFERENCE CODE ENDPOINTS ====================
+
+// Get post by reference code
+app.get("/api/posts/by-ref/:code", async (req, res) => {
+  const code = req.params.code.toUpperCase();
+  
+  if (!isValidReferenceCode(code)) {
+    return res.status(400).json({ error: "invalid_reference_code" });
+  }
+
+  const { data: post, error } = await supabase
+    .from("posts")
+    .select("*, profiles(handle, x_handle)")
+    .eq("reference_code", code)
+    .single();
+
+  if (error || !post) {
+    return res.status(404).json({ error: "not_found" });
+  }
+
+  res.json({
+    post: {
+      ...post,
+      userHandle: post.profiles?.handle || "unknown",
+      xHandle: post.profiles?.x_handle,
+      createdAt: post.created_at,
+      updatedAt: post.updated_at,
+    },
+  });
+});
+
+// ==================== COMMENTS / NEGOTIATION ENDPOINTS ====================
+
+const CreateCommentSchema = z.object({
+  content: z.string().min(1).max(1000),
+  offer_price: z.string().max(40).optional(),
+});
+
+// Get comments for a post
+app.get("/api/posts/:id/comments", async (req, res) => {
+  const { data: comments, error } = await supabase
+    .from("comments")
+    .select("*, profiles(handle, x_handle)")
+    .eq("post_id", req.params.id)
+    .order("created_at", { ascending: true });
+
+  if (error) {
+    console.error("Comments fetch error:", error);
+    return res.status(500).json({ error: "fetch_failed" });
+  }
+
+  res.json({
+    comments: (comments || []).map((c) => ({
+      id: c.id,
+      content: c.content,
+      offerPrice: c.offer_price,
+      userHandle: c.profiles?.handle || "unknown",
+      xHandle: c.profiles?.x_handle,
+      createdAt: c.created_at,
+      isNegotiation: !!c.offer_price,
+    })),
+  });
+});
+
+// Add comment to a post (rate limited: 1 per 3 minutes per user per post)
+app.post("/api/posts/:id/comments", requireAuth, async (req, res) => {
+  const parsed = CreateCommentSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ error: "invalid_input" });
+  }
+
+  const postId = req.params.id;
+  const { content, offer_price } = parsed.data;
+
+  // Check rate limit: 1 comment per 3 minutes per user per post
+  const threeMinutesAgo = new Date(Date.now() - 3 * 60 * 1000).toISOString();
+  const { data: recentComments, error: rateError } = await supabase
+    .from("comments")
+    .select("id")
+    .eq("post_id", postId)
+    .eq("user_id", req.user.id)
+    .gte("created_at", threeMinutesAgo);
+
+  if (rateError) {
+    console.error("Rate limit check error:", rateError);
+  }
+
+  if (recentComments && recentComments.length > 0) {
+    return res.status(429).json({
+      error: "rate_limited",
+      message: "You can only comment once every 3 minutes on a post",
+      retry_after: 180,
+    });
+  }
+
+  // Verify post exists
+  const { data: post } = await supabase
+    .from("posts")
+    .select("id, user_id")
+    .eq("id", postId)
+    .single();
+
+  if (!post) {
+    return res.status(404).json({ error: "post_not_found" });
+  }
+
+  // Create comment
+  const { data: comment, error } = await supabase
+    .from("comments")
+    .insert({
+      post_id: postId,
+      user_id: req.user.id,
+      content,
+      offer_price,
+    })
+    .select()
+    .single();
+
+  if (error) {
+    console.error("Comment creation error:", error);
+    return res.status(500).json({ error: "creation_failed" });
+  }
+
+  // Update post status if this is a negotiation
+  if (offer_price) {
+    await supabase
+      .from("posts")
+      .update({ status: "negotiating" })
+      .eq("id", postId);
+  }
+
+  res.status(201).json({
+    comment: {
+      ...comment,
+      userHandle: req.user.handle,
+      createdAt: comment.created_at,
+    },
+  });
+});
+
+// ==================== IMAGE UPLOAD ENDPOINTS ====================
+
+// Get signed URL for image upload
+app.post("/api/upload/image-url", requireAuth, async (req, res) => {
+  const { filename, contentType } = req.body;
+  
+  if (!filename || !contentType) {
+    return res.status(400).json({ error: "missing_filename_or_contentType" });
+  }
+
+  // Validate content type
+  const allowedTypes = ["image/jpeg", "image/png", "image/gif", "image/webp"];
+  if (!allowedTypes.includes(contentType)) {
+    return res.status(400).json({ error: "invalid_content_type" });
+  }
+
+  // Generate unique file path
+  const timestamp = Date.now();
+  const fileExt = filename.split(".").pop();
+  const filePath = `posts/${req.user.id}/${timestamp}.${fileExt}`;
+
+  // Create signed URL for upload
+  const { data, error } = await supabase.storage
+    .from("post-images")
+    .createSignedUploadUrl(filePath);
+
+  if (error) {
+    console.error("Signed URL error:", error);
+    return res.status(500).json({ error: "upload_url_creation_failed" });
+  }
+
+  res.json({
+    signedUrl: data.signedUrl,
+    filePath,
+    publicUrl: `${SUPABASE_URL}/storage/v1/object/public/post-images/${filePath}`,
+  });
+});
+
+// Get public URL for uploaded image
+app.get("/api/upload/image-url/:path", requireAuth, async (req, res) => {
+  const filePath = req.params.path;
+  
+  const { data } = supabase.storage
+    .from("post-images")
+    .getPublicUrl(filePath);
+
+  res.json({ publicUrl: data.publicUrl });
+});
+
+// ==================== WALLET ENDPOINTS ====================
+
+const ConnectWalletSchema = z.object({
+  wallet_address: z.string().regex(/^0x[a-fA-F0-9]{40}$/),
+  chain: z.enum(["sepolia", "mainnet"]).default("sepolia"),
+});
+
+// Connect wallet to agent account
+app.post("/api/agents/wallet", requireAuth, async (req, res) => {
+  const parsed = ConnectWalletSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ error: "invalid_wallet_address" });
+  }
+
+  const { wallet_address, chain } = parsed.data;
+
+  // Check if wallet is already linked to another account
+  const { data: existing } = await supabase
+    .from("wallets")
+    .select("user_id")
+    .eq("wallet_address", wallet_address.toLowerCase())
+    .neq("user_id", req.user.id)
+    .single();
+
+  if (existing) {
+    return res.status(409).json({ error: "wallet_already_linked" });
+  }
+
+  // Upsert wallet
+  const { data: wallet, error } = await supabase
+    .from("wallets")
+    .upsert({
+      user_id: req.user.id,
+      wallet_address: wallet_address.toLowerCase(),
+      chain,
+      updated_at: new Date().toISOString(),
+    })
+    .select()
+    .single();
+
+  if (error) {
+    console.error("Wallet connection error:", error);
+    return res.status(500).json({ error: "wallet_connection_failed" });
+  }
+
+  res.json({
+    wallet: {
+      address: wallet.wallet_address,
+      chain: wallet.chain,
+      connectedAt: wallet.created_at,
+    },
+  });
+});
+
+// Get connected wallet
+app.get("/api/agents/wallet", requireAuth, async (req, res) => {
+  const { data: wallet, error } = await supabase
+    .from("wallets")
+    .select("*")
+    .eq("user_id", req.user.id)
+    .single();
+
+  if (error || !wallet) {
+    return res.status(404).json({ error: "wallet_not_found" });
+  }
+
+  res.json({
+    wallet: {
+      address: wallet.wallet_address,
+      chain: wallet.chain,
+      connectedAt: wallet.created_at,
+    },
+  });
+});
+
+// ==================== ESCROW ENDPOINTS ====================
+
+const CreateEscrowSchema = z.object({
+  post_id: z.string().uuid(),
+  amount: z.string().regex(/^\d+(\.\d{1,6})?$/),
+  seller_wallet: z.string().regex(/^0x[a-fA-F0-9]{40}$/),
+  buyer_wallet: z.string().regex(/^0x[a-fA-F0-9]{40}$/),
+});
+
+// Create escrow for a deal
+app.post("/api/escrow", requireAuth, async (req, res) => {
+  const parsed = CreateEscrowSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ error: "invalid_input" });
+  }
+
+  const { post_id, amount, seller_wallet, buyer_wallet } = parsed.data;
+
+  // Verify post exists and is available
+  const { data: post } = await supabase
+    .from("posts")
+    .select("id, user_id, status, reference_code")
+    .eq("id", post_id)
+    .single();
+
+  if (!post) {
+    return res.status(404).json({ error: "post_not_found" });
+  }
+
+  if (post.status === "completed" || post.status === "cancelled") {
+    return res.status(400).json({ error: "post_not_available" });
+  }
+
+  // Create escrow record
+  const { data: escrow, error } = await supabase
+    .from("escrows")
+    .insert({
+      post_id,
+      buyer_id: req.user.id,
+      seller_wallet: seller_wallet.toLowerCase(),
+      buyer_wallet: buyer_wallet.toLowerCase(),
+      amount,
+      status: "pending",
+    })
+    .select()
+    .single();
+
+  if (error) {
+    console.error("Escrow creation error:", error);
+    return res.status(500).json({ error: "escrow_creation_failed" });
+  }
+
+  // Update post status
+  await supabase
+    .from("posts")
+    .update({ status: "escrow_pending", escrow_id: escrow.id })
+    .eq("id", post_id);
+
+  res.status(201).json({
+    escrow: {
+      id: escrow.id,
+      postId: escrow.post_id,
+      amount: escrow.amount,
+      status: escrow.status,
+      createdAt: escrow.created_at,
+    },
+    paymentInstructions: {
+      amount: `${amount} USDC`,
+      recipient: "Escrow Contract",
+      network: "Sepolia Testnet",
+      contractAddress: process.env.ESCROW_CONTRACT_ADDRESS || "0x...",
+    },
+  });
+});
+
+// Get escrow by ID
+app.get("/api/escrow/:id", requireAuth, async (req, res) => {
+  const { data: escrow, error } = await supabase
+    .from("escrows")
+    .select("*, posts(reference_code, title)")
+    .eq("id", req.params.id)
+    .single();
+
+  if (error || !escrow) {
+    return res.status(404).json({ error: "not_found" });
+  }
+
+  // Check if user is involved
+  if (escrow.buyer_id !== req.user.id && escrow.seller_id !== req.user.id) {
+    return res.status(403).json({ error: "unauthorized" });
+  }
+
+  res.json({
+    escrow: {
+      id: escrow.id,
+      postId: escrow.post_id,
+      postRef: escrow.posts?.reference_code,
+      postTitle: escrow.posts?.title,
+      amount: escrow.amount,
+      status: escrow.status,
+      buyerWallet: escrow.buyer_wallet,
+      sellerWallet: escrow.seller_wallet,
+      createdAt: escrow.created_at,
+      fundedAt: escrow.funded_at,
+      deliveredAt: escrow.delivered_at,
+      completedAt: escrow.completed_at,
+    },
+  });
+});
+
+// Mark escrow as funded (buyer deposited)
+app.post("/api/escrow/:id/deposit", requireAuth, async (req, res) => {
+  const { id } = req.params;
+
+  const { data: escrow } = await supabase
+    .from("escrows")
+    .select("*")
+    .eq("id", id)
+    .eq("buyer_id", req.user.id)
+    .single();
+
+  if (!escrow) {
+    return res.status(404).json({ error: "escrow_not_found" });
+  }
+
+  if (escrow.status !== "pending") {
+    return res.status(400).json({ error: "invalid_escrow_status" });
+  }
+
+  const { data: updated, error } = await supabase
+    .from("escrows")
+    .update({
+      status: "funded",
+      funded_at: new Date().toISOString(),
+    })
+    .eq("id", id)
+    .select()
+    .single();
+
+  if (error) {
+    return res.status(500).json({ error: "update_failed" });
+  }
+
+  // Update post status
+  await supabase
+    .from("posts")
+    .update({ status: "escrow_funded" })
+    .eq("id", escrow.post_id);
+
+  res.json({ escrow: updated });
+});
+
+// Mark as delivered (seller shipped)
+app.post("/api/escrow/:id/delivered", requireAuth, async (req, res) => {
+  const { id } = req.params;
+
+  const { data: escrow } = await supabase
+    .from("escrows")
+    .select("*")
+    .eq("id", id)
+    .single();
+
+  if (!escrow) {
+    return res.status(404).json({ error: "escrow_not_found" });
+  }
+
+  if (escrow.status !== "funded") {
+    return res.status(400).json({ error: "invalid_escrow_status" });
+  }
+
+  const { data: updated, error } = await supabase
+    .from("escrows")
+    .update({
+      status: "delivered",
+      delivered_at: new Date().toISOString(),
+    })
+    .eq("id", id)
+    .select()
+    .single();
+
+  if (error) {
+    return res.status(500).json({ error: "update_failed" });
+  }
+
+  // Update post status
+  await supabase
+    .from("posts")
+    .update({ status: "delivered" })
+    .eq("id", escrow.post_id);
+
+  res.json({ escrow: updated });
+});
+
+// Confirm receipt and release funds (buyer confirms)
+app.post("/api/escrow/:id/confirm", requireAuth, async (req, res) => {
+  const { id } = req.params;
+
+  const { data: escrow } = await supabase
+    .from("escrows")
+    .select("*")
+    .eq("id", id)
+    .eq("buyer_id", req.user.id)
+    .single();
+
+  if (!escrow) {
+    return res.status(404).json({ error: "escrow_not_found" });
+  }
+
+  if (escrow.status !== "delivered") {
+    return res.status(400).json({ error: "invalid_escrow_status" });
+  }
+
+  const { data: updated, error } = await supabase
+    .from("escrows")
+    .update({
+      status: "completed",
+      completed_at: new Date().toISOString(),
+    })
+    .eq("id", id)
+    .select()
+    .single();
+
+  if (error) {
+    return res.status(500).json({ error: "update_failed" });
+  }
+
+  // Update post status
+  await supabase
+    .from("posts")
+    .update({ status: "completed", is_available: false })
+    .eq("id", escrow.post_id);
+
+  res.json({
+    escrow: updated,
+    message: "Transaction completed. Funds released to seller.",
+  });
+});
+
+// ==================== MODIFIED CREATE POST (with reference code) ====================
+
+// Override the existing POST /api/posts to add reference code generation
+const originalCreatePost = app._router.stack.find(
+  (layer) => layer.route?.path === "/api/posts" && layer.route.methods.post
+);
+
+if (originalCreatePost) {
+  // Remove original handler (we'll replace it)
+  const index = app._router.stack.indexOf(originalCreatePost);
+  app._router.stack.splice(index, 1);
+}
+
+// New create post endpoint with reference code
+app.post("/api/posts", requireAuth, async (req, res) => {
+  const parsed = CreatePostSchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: "invalid_input" });
+
+  const data = parsed.data;
+
+  // Generate reference code
+  const referenceCode = await generateReferenceCode(
+    data.category,
+    data.section,
+    data.location,
+    supabase
+  );
+
+  const { data: post, error } = await supabase
+    .from("posts")
+    .insert({
+      user_id: req.user.id,
+      category: data.category,
+      section: data.section,
+      title: data.title,
+      location: data.location,
+      price: data.price,
+      body: data.body,
+      reference_code: referenceCode,
+      status: "active",
+      is_available: true,
+
+      // Category-specific fields
+      seller_type: data.seller_type,
+      has_image: data.has_image,
+      bedrooms: data.bedrooms,
+      bathrooms: data.bathrooms,
+      sqft: data.sqft,
+      cats_ok: data.cats_ok,
+      dogs_ok: data.dogs_ok,
+      compensation: data.compensation,
+      telecommute: data.telecommute,
+      employment_type: data.employment_type,
+      pay: data.pay,
+    })
+    .select()
+    .single();
+
+  if (error) {
+    console.error("Post creation error:", error);
+    return res.status(500).json({ error: "creation_failed" });
+  }
+
+  res.status(201).json({
+    post: {
+      ...post,
+      userHandle: req.user.handle,
+      referenceCode: post.reference_code,
+      createdAt: post.created_at,
+      updatedAt: post.updated_at,
+    },
+    agentCommand: `Tell your human: "Listed as ${referenceCode}"`,
+  });
 });
 
 app.listen(PORT, () => {
