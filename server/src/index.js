@@ -724,6 +724,231 @@ app.post("/api/posts/:id/comments", requireAuth, async (req, res) => {
   });
 });
 
+// ==================== INQUIRY MANAGEMENT ====================
+
+// Get all inquiries on user's listings
+app.get("/api/inquiries", requireAuth, async (req, res) => {
+  // Get all posts by user
+  const { data: userPosts } = await supabase
+    .from("posts")
+    .select("id, title, reference_code")
+    .eq("user_id", req.user.id);
+
+  if (!userPosts || userPosts.length === 0) {
+    return res.json({ inquiries: [] });
+  }
+
+  const postIds = userPosts.map((p) => p.id);
+
+  // Get all comments on those posts
+  const { data: comments, error } = await supabase
+    .from("comments")
+    .select("*, profiles(handle, x_handle), posts(title, reference_code)")
+    .in("post_id", postIds)
+    .neq("user_id", req.user.id) // Exclude own comments
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("Inquiries fetch error:", error);
+    return res.status(500).json({ error: "fetch_failed" });
+  }
+
+  res.json({
+    inquiries: (comments || []).map((c) => ({
+      id: c.id,
+      postId: c.post_id,
+      postTitle: c.posts?.title,
+      postRef: c.posts?.reference_code,
+      content: c.content,
+      offerPrice: c.offer_price,
+      fromHandle: c.profiles?.handle,
+      fromXHandle: c.profiles?.x_handle,
+      createdAt: c.created_at,
+      isNegotiation: !!c.offer_price,
+    })),
+  });
+});
+
+// Get unread inquiry count
+app.get("/api/inquiries/unread-count", requireAuth, async (req, res) => {
+  // This would require a "read" status on comments
+  // For now, return recent count as approximation
+  const { count, error } = await supabase
+    .from("comments")
+    .select("*", { count: "exact", head: true })
+    .eq("posts.user_id", req.user.id)
+    .neq("user_id", req.user.id)
+    .gte("created_at", new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString());
+
+  res.json({ unreadCount: count || 0 });
+});
+
+// ==================== LOGISTICS TRACKING ====================
+
+const CreateLogisticsSchema = z.object({
+  escrow_id: z.string().uuid(),
+  type: z.enum(["shipping", "meeting", "delivery", "pickup", "other"]),
+  details: z.object({
+    // Shipping
+    carrier: z.string().optional(),
+    tracking_number: z.string().optional(),
+    tracking_url: z.string().url().optional(),
+    estimated_delivery: z.string().datetime().optional(),
+    // Meeting
+    location: z.string().optional(),
+    datetime: z.string().datetime().optional(),
+    notes: z.string().optional(),
+    // General
+    description: z.string().optional(),
+  }),
+});
+
+// Create logistics entry
+app.post("/api/logistics", requireAuth, async (req, res) => {
+  const parsed = CreateLogisticsSchema.safeParse(req.body);
+  if (!parsed.success) {
+    return res.status(400).json({ error: "invalid_input" });
+  }
+
+  const { escrow_id, type, details } = parsed.data;
+
+  // Verify user is party to escrow
+  const { data: escrow } = await supabase
+    .from("escrows")
+    .select("id, buyer_id, post_id")
+    .eq("id", escrow_id)
+    .single();
+
+  if (!escrow) {
+    return res.status(404).json({ error: "escrow_not_found" });
+  }
+
+  // Check if user is buyer or can access post
+  const { data: post } = await supabase
+    .from("posts")
+    .select("user_id")
+    .eq("id", escrow.post_id)
+    .single();
+
+  const isBuyer = escrow.buyer_id === req.user.id;
+  const isSeller = post?.user_id === req.user.id;
+
+  if (!isBuyer && !isSeller) {
+    return res.status(403).json({ error: "unauthorized" });
+  }
+
+  const { data: logistics, error } = await supabase
+    .from("logistics")
+    .insert({
+      escrow_id,
+      created_by: req.user.id,
+      type,
+      details,
+      status: "active",
+    })
+    .select()
+    .single();
+
+  if (error) {
+    console.error("Logistics creation error:", error);
+    return res.status(500).json({ error: "creation_failed" });
+  }
+
+  res.status(201).json({
+    logistics: {
+      id: logistics.id,
+      type: logistics.type,
+      details: logistics.details,
+      status: logistics.status,
+      createdAt: logistics.created_at,
+      createdBy: isBuyer ? "buyer" : "seller",
+    },
+  });
+});
+
+// Get logistics for an escrow
+app.get("/api/logistics/:escrow_id", requireAuth, async (req, res) => {
+  const { escrow_id } = req.params;
+
+  // Verify access
+  const { data: escrow } = await supabase
+    .from("escrows")
+    .select("buyer_id, post_id")
+    .eq("id", escrow_id)
+    .single();
+
+  if (!escrow) {
+    return res.status(404).json({ error: "escrow_not_found" });
+  }
+
+  const { data: post } = await supabase
+    .from("posts")
+    .select("user_id")
+    .eq("id", escrow.post_id)
+    .single();
+
+  if (escrow.buyer_id !== req.user.id && post?.user_id !== req.user.id) {
+    return res.status(403).json({ error: "unauthorized" });
+  }
+
+  const { data: logistics, error } = await supabase
+    .from("logistics")
+    .select("*")
+    .eq("escrow_id", escrow_id)
+    .order("created_at", { ascending: true });
+
+  if (error) {
+    return res.status(500).json({ error: "fetch_failed" });
+  }
+
+  res.json({
+    logistics: (logistics || []).map((l) => ({
+      id: l.id,
+      type: l.type,
+      details: l.details,
+      status: l.status,
+      createdAt: l.created_at,
+      completedAt: l.completed_at,
+    })),
+  });
+});
+
+// Mark logistics complete
+app.post("/api/logistics/:id/complete", requireAuth, async (req, res) => {
+  const { id } = req.params;
+
+  const { data: logistics } = await supabase
+    .from("logistics")
+    .select("*")
+    .eq("id", id)
+    .single();
+
+  if (!logistics) {
+    return res.status(404).json({ error: "not_found" });
+  }
+
+  // Verify user created it or is counterparty
+  if (logistics.created_by !== req.user.id) {
+    return res.status(403).json({ error: "unauthorized" });
+  }
+
+  const { data: updated, error } = await supabase
+    .from("logistics")
+    .update({
+      status: "completed",
+      completed_at: new Date().toISOString(),
+    })
+    .eq("id", id)
+    .select()
+    .single();
+
+  if (error) {
+    return res.status(500).json({ error: "update_failed" });
+  }
+
+  res.json({ logistics: updated });
+});
+
 // ==================== IMAGE UPLOAD ENDPOINTS ====================
 
 // Get signed URL for image upload
