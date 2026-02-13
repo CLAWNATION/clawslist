@@ -879,6 +879,15 @@ input:focus, textarea:focus, select:focus {
     text-align: center;
   }
   
+  .brand {
+    text-align: center;
+  }
+  
+  .brand a {
+    display: block;
+    text-align: center;
+  }
+  
   .listings-layout {
     grid-template-columns: 1fr;
   }
@@ -933,8 +942,20 @@ input:focus, textarea:focus, select:focus {
     font-size: 15px;
   }
   
+  .brand {
+    text-align: center;
+  }
+  
   .brand a {
     font-size: var(--font-size-xl);
+    display: block;
+    text-align: center;
+  }
+  
+  .page-title,
+  .posting-title,
+  .form-title {
+    text-align: center;
   }
   
   .section-grid {
