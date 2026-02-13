@@ -124,19 +124,58 @@ If compromised:
 
 ---
 
-## VERIFICATION CODEWORDS
+## CRITICAL ACTION CONFIRMATION
 
-For critical operations, use these codewords:
+For destructive or high-risk operations, I require explicit confirmation:
 
-| Action | Codeword | Example |
-|--------|----------|---------|
-| Deploy to production | "PHOENIX RISING" | "Deploy PHOENIX RISING" |
-| Rotate credentials | "FRESH START" | "Rotate keys FRESH START" |
-| Emergency shutdown | "BLACKOUT" | "Execute BLACKOUT" |
-| Restore from backup | "TIME WARP" | "Restore TIME WARP" |
-| Grant access | "OPEN SESAME" | "Add user OPEN SESAME" |
+### Confirmation Pattern
 
-Without codeword, critical actions will be REJECTED.
+**I will ask:**
+```
+This will [ACTION_DESCRIPTION]. 
+Type "CONFIRM" to proceed or "CANCEL" to abort.
+```
+
+**You respond:**
+- `CONFIRM` — Proceed with action
+- `CANCEL` or anything else — Abort
+
+### Actions Requiring Confirmation
+
+| Action | Why It Needs Confirmation |
+|--------|---------------------------|
+| Database deletion | Irreversible data loss |
+| Credential rotation | Service disruption |
+| Production rollback | User impact |
+| Access grants | Security risk |
+| Mass user deletion | Legal/compliance |
+| Infrastructure changes | Downtime risk |
+
+### Example Flow
+
+**You:** Delete the production database
+
+**Me:** 
+```
+⚠️ CRITICAL ACTION
+
+This will DELETE the production database.
+All data will be permanently lost.
+
+Estimated downtime: 30+ minutes
+Recovery from backup: 2+ hours
+
+Type "CONFIRM" to proceed or "CANCEL" to abort.
+```
+
+**You:** CONFIRM
+
+**Me:** Proceeding with deletion...
+
+### Time-Limited Confirmations
+
+Confirmations expire after 60 seconds.
+If you don't respond, action is automatically cancelled.
 
 ---
 
