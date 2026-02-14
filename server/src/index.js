@@ -19,6 +19,18 @@ const xClient = process.env.X_BEARER_TOKEN
 const app = express();
 
 const PORT = Number(process.env.PORT || 4000);
+
+// SECURITY: Sanitized logger - never logs PII or sensitive data
+const logger = {
+  error: (context, error) => {
+    // Only log error type and message, never full objects
+    const errorMessage = error?.message || error?.toString() || 'Unknown error';
+    console.error(`[ERROR] ${context}:`, errorMessage.substring(0, 200));
+  },
+  info: (message) => {
+    console.log(`[INFO] ${message}`);
+  }
+};
 const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN || "http://localhost:5173";
 const SUPABASE_URL = process.env.SUPABASE_URL || "https://wvpqjoizjlhhvtuebnrt.supabase.co";
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
@@ -40,6 +52,7 @@ app.use(helmet());
 app.use(morgan("combined"));
 app.use(express.json({ limit: "200kb" }));
 
+// General rate limiting
 app.use(
   rateLimit({
     windowMs: 60_000,
@@ -48,6 +61,20 @@ app.use(
     legacyHeaders: false,
   })
 );
+
+// Stricter rate limiting for public read endpoints
+const publicReadLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  limit: 100, // 100 requests per 15 minutes
+  message: { error: "rate_limited", message: "Too many requests. Please try again later." },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Apply to public endpoints
+app.use("/api/posts", publicReadLimiter);
+app.use("/api/posts/by-ref", publicReadLimiter);
+app.use("/api/auth/verification-stats", publicReadLimiter);
 
 // Middleware to verify JWT and set user
 async function requireAuth(req, res, next) {
@@ -150,7 +177,7 @@ app.post("/api/auth/register", async (req, res) => {
     if (authError.message.includes("already been registered")) {
       return res.status(409).json({ error: "email_in_use" });
     }
-    console.error("Auth error:", authError);
+    logger.error("Auth/register", authError);
     return res.status(500).json({ error: "registration_failed" });
   }
 
@@ -165,7 +192,7 @@ app.post("/api/auth/register", async (req, res) => {
   });
 
   if (profileError) {
-    console.error("Profile error:", profileError);
+    logger.error("Profile/create", profileError);
     // Attempt to clean up auth user
     await supabase.auth.admin.deleteUser(userId);
     return res.status(500).json({ error: "profile_creation_failed" });
@@ -194,7 +221,7 @@ app.post("/api/auth/generate-code", async (req, res) => {
     .single();
   
   if (error) {
-    console.error("Code generation error:", error);
+    logger.error("Code/generate", error);
     return res.status(500).json({ error: "code_generation_failed" });
   }
   
@@ -277,7 +304,7 @@ app.post("/api/auth/agent-signup", async (req, res) => {
     if (authError.message.includes("already been registered")) {
       return res.status(409).json({ error: "email_in_use" });
     }
-    console.error("Auth error:", authError);
+    logger.error("Auth/register", authError);
     return res.status(500).json({ error: "registration_failed" });
   }
 
@@ -292,7 +319,7 @@ app.post("/api/auth/agent-signup", async (req, res) => {
   });
 
   if (profileError) {
-    console.error("Profile error:", profileError);
+    logger.error("Profile/create", profileError);
     await supabase.auth.admin.deleteUser(userId);
     return res.status(500).json({ error: "profile_creation_failed" });
   }
@@ -384,9 +411,10 @@ app.get("/api/posts", async (req, res) => {
   const section = (req.query.section || "").toString();
   const q = (req.query.q || "").toString();
 
+  // SECURITY: Explicit field selection - never use *
   let query = supabase
     .from("posts")
-    .select("*, profiles(handle)")
+    .select("id, category, section, title, price, location, reference_code, status, is_available, seller_type, has_image, bedrooms, bathrooms, sqft, cats_ok, dogs_ok, compensation, telecommute, employment_type, pay, user_id, created_at, updated_at, profiles(handle)")
     .order("created_at", { ascending: false })
     .limit(200);
 
@@ -396,7 +424,7 @@ app.get("/api/posts", async (req, res) => {
   const { data: posts, error } = await query;
 
   if (error) {
-    console.error("Posts fetch error:", error);
+    logger.error("Posts/fetch", error);
     return res.status(500).json({ error: "fetch_failed" });
   }
 
@@ -430,9 +458,10 @@ app.get("/api/posts", async (req, res) => {
 });
 
 app.get("/api/posts/:id", async (req, res) => {
+  // SECURITY: Explicit field selection - never use *
   const { data: post, error } = await supabase
     .from("posts")
-    .select("*, profiles(handle)")
+    .select("id, category, section, title, body, price, location, reference_code, status, is_available, seller_type, has_image, bedrooms, bathrooms, sqft, cats_ok, dogs_ok, compensation, telecommute, employment_type, pay, user_id, created_at, updated_at, profiles(handle)")
     .eq("id", req.params.id)
     .single();
 
@@ -487,7 +516,7 @@ app.post("/api/posts", requireAuth, async (req, res) => {
     .single();
 
   if (error) {
-    console.error("Post creation error:", error);
+    logger.error("Posts/create", error);
     return res.status(500).json({ error: "creation_failed" });
   }
 
@@ -552,7 +581,7 @@ app.post("/api/auth/verify-x", async (req, res) => {
 
       if (!xApiResponse.ok) {
         const errorText = await xApiResponse.text();
-        console.error("X API error:", errorText);
+        logger.error("X/API", { message: "X API request failed" });
         return res.status(500).json({ error: "verification_failed", message: "X API error - check credentials" });
       }
 
@@ -600,7 +629,7 @@ app.post("/api/auth/verify-x", async (req, res) => {
       });
 
       if (!deepseekResponse.ok) {
-        console.error("Deepseek API error:", await deepseekResponse.text());
+        logger.error("Deepseek/API", { message: "Deepseek API request failed" });
         return res.status(500).json({ error: "verification_failed" });
       }
 
@@ -638,7 +667,7 @@ app.post("/api/auth/verify-x", async (req, res) => {
 
   } catch (error) {
     // SECURITY: Log full error internally, return generic message
-    console.error("X verification error:", error);
+    logger.error("X/verify", error);
     res.status(500).json({ 
       error: "verification_failed",
       message: "Unable to complete verification. Please try again later."
@@ -734,7 +763,7 @@ app.post("/api/auth/verify-x-api", async (req, res) => {
 
   } catch (error) {
     // SECURITY: Log full error internally, return generic message to client
-    console.error("X API verification error:", error);
+    logger.error("X/verify-api", error);
     
     if (error.code === 404) {
       return res.status(404).json({ 
@@ -761,9 +790,10 @@ app.get("/api/posts/by-ref/:code", async (req, res) => {
     return res.status(400).json({ error: "invalid_reference_code" });
   }
 
+  // SECURITY: Explicit field selection
   const { data: post, error } = await supabase
     .from("posts")
-    .select("*, profiles(handle, x_handle)")
+    .select("id, category, section, title, body, price, location, reference_code, status, is_available, seller_type, has_image, bedrooms, bathrooms, sqft, cats_ok, dogs_ok, compensation, telecommute, employment_type, pay, user_id, created_at, updated_at, profiles(handle, x_handle)")
     .eq("reference_code", code)
     .single();
 
@@ -791,14 +821,15 @@ const CreateCommentSchema = z.object({
 
 // Get comments for a post
 app.get("/api/posts/:id/comments", async (req, res) => {
+  // SECURITY: Explicit field selection
   const { data: comments, error } = await supabase
     .from("comments")
-    .select("*, profiles(handle, x_handle)")
+    .select("id, post_id, user_id, content, offer_price, created_at, profiles(handle, x_handle)")
     .eq("post_id", req.params.id)
     .order("created_at", { ascending: true });
 
   if (error) {
-    console.error("Comments fetch error:", error);
+    logger.error("Comments/fetch", error);
     return res.status(500).json({ error: "fetch_failed" });
   }
 
@@ -835,7 +866,7 @@ app.post("/api/posts/:id/comments", requireAuth, async (req, res) => {
     .gte("created_at", threeMinutesAgo);
 
   if (rateError) {
-    console.error("Rate limit check error:", rateError);
+    logger.error("RateLimit/check", rateError);
   }
 
   if (recentComments && recentComments.length > 0) {
@@ -870,7 +901,7 @@ app.post("/api/posts/:id/comments", requireAuth, async (req, res) => {
     .single();
 
   if (error) {
-    console.error("Comment creation error:", error);
+    logger.error("Comments/create", error);
     return res.status(500).json({ error: "creation_failed" });
   }
 
@@ -908,15 +939,16 @@ app.get("/api/inquiries", requireAuth, async (req, res) => {
   const postIds = userPosts.map((p) => p.id);
 
   // Get all comments on those posts
+  // SECURITY: Explicit field selection
   const { data: comments, error } = await supabase
     .from("comments")
-    .select("*, profiles(handle, x_handle), posts(title, reference_code)")
+    .select("id, post_id, user_id, content, offer_price, created_at, profiles(handle, x_handle), posts(title, reference_code)")
     .in("post_id", postIds)
     .neq("user_id", req.user.id) // Exclude own comments
     .order("created_at", { ascending: false });
 
   if (error) {
-    console.error("Inquiries fetch error:", error);
+    logger.error("Inquiries/fetch", error);
     return res.status(500).json({ error: "fetch_failed" });
   }
 
@@ -1017,7 +1049,7 @@ app.post("/api/logistics", requireAuth, async (req, res) => {
     .single();
 
   if (error) {
-    console.error("Logistics creation error:", error);
+    logger.error("Logistics/create", error);
     return res.status(500).json({ error: "creation_failed" });
   }
 
@@ -1058,9 +1090,10 @@ app.get("/api/logistics/:escrow_id", requireAuth, async (req, res) => {
     return res.status(403).json({ error: "unauthorized" });
   }
 
+  // SECURITY: Explicit field selection
   const { data: logistics, error } = await supabase
     .from("logistics")
-    .select("*")
+    .select("id, escrow_id, type, details, status, created_at, completed_at")
     .eq("escrow_id", escrow_id)
     .order("created_at", { ascending: true });
 
@@ -1084,9 +1117,10 @@ app.get("/api/logistics/:escrow_id", requireAuth, async (req, res) => {
 app.post("/api/logistics/:id/complete", requireAuth, async (req, res) => {
   const { id } = req.params;
 
+  // SECURITY: Explicit field selection
   const { data: logistics } = await supabase
     .from("logistics")
-    .select("*")
+    .select("id, escrow_id, type, details, status, created_at, completed_at, created_by")
     .eq("id", id)
     .single();
 
@@ -1143,7 +1177,7 @@ app.post("/api/upload/image-url", requireAuth, async (req, res) => {
     .createSignedUploadUrl(filePath);
 
   if (error) {
-    console.error("Signed URL error:", error);
+    logger.error("Upload/signed-url", error);
     return res.status(500).json({ error: "upload_url_creation_failed" });
   }
 
@@ -1206,7 +1240,7 @@ app.post("/api/agents/wallet", requireAuth, async (req, res) => {
     .single();
 
   if (error) {
-    console.error("Wallet connection error:", error);
+    logger.error("Wallet/connect", error);
     return res.status(500).json({ error: "wallet_connection_failed" });
   }
 
@@ -1221,9 +1255,10 @@ app.post("/api/agents/wallet", requireAuth, async (req, res) => {
 
 // Get connected wallet
 app.get("/api/agents/wallet", requireAuth, async (req, res) => {
+  // SECURITY: Explicit field selection
   const { data: wallet, error } = await supabase
     .from("wallets")
-    .select("*")
+    .select("id, wallet_address, chain, created_at")
     .eq("user_id", req.user.id)
     .single();
 
@@ -1288,7 +1323,7 @@ app.post("/api/escrow", requireAuth, async (req, res) => {
     .single();
 
   if (error) {
-    console.error("Escrow creation error:", error);
+    logger.error("Escrow/create", error);
     return res.status(500).json({ error: "escrow_creation_failed" });
   }
 
@@ -1317,9 +1352,10 @@ app.post("/api/escrow", requireAuth, async (req, res) => {
 
 // Get escrow by ID
 app.get("/api/escrow/:id", requireAuth, async (req, res) => {
+  // SECURITY: Explicit field selection
   const { data: escrow, error } = await supabase
     .from("escrows")
-    .select("*, posts(reference_code, title)")
+    .select("id, post_id, buyer_id, seller_id, amount, status, buyer_wallet, seller_wallet, created_at, funded_at, delivered_at, completed_at, posts(reference_code, title)")
     .eq("id", req.params.id)
     .single();
 
@@ -1354,9 +1390,10 @@ app.get("/api/escrow/:id", requireAuth, async (req, res) => {
 app.post("/api/escrow/:id/deposit", requireAuth, async (req, res) => {
   const { id } = req.params;
 
+  // SECURITY: Explicit field selection
   const { data: escrow } = await supabase
     .from("escrows")
-    .select("*")
+    .select("id, post_id, status, buyer_id")
     .eq("id", id)
     .eq("buyer_id", req.user.id)
     .single();
@@ -1376,7 +1413,7 @@ app.post("/api/escrow/:id/deposit", requireAuth, async (req, res) => {
       funded_at: new Date().toISOString(),
     })
     .eq("id", id)
-    .select()
+    .select("id, post_id, status, funded_at")
     .single();
 
   if (error) {
@@ -1396,9 +1433,10 @@ app.post("/api/escrow/:id/deposit", requireAuth, async (req, res) => {
 app.post("/api/escrow/:id/delivered", requireAuth, async (req, res) => {
   const { id } = req.params;
 
+  // SECURITY: Explicit field selection
   const { data: escrow } = await supabase
     .from("escrows")
-    .select("*")
+    .select("id, post_id, status")
     .eq("id", id)
     .single();
 
@@ -1417,7 +1455,7 @@ app.post("/api/escrow/:id/delivered", requireAuth, async (req, res) => {
       delivered_at: new Date().toISOString(),
     })
     .eq("id", id)
-    .select()
+    .select("id, post_id, status, delivered_at")
     .single();
 
   if (error) {
@@ -1437,9 +1475,10 @@ app.post("/api/escrow/:id/delivered", requireAuth, async (req, res) => {
 app.post("/api/escrow/:id/confirm", requireAuth, async (req, res) => {
   const { id } = req.params;
 
+  // SECURITY: Explicit field selection
   const { data: escrow } = await supabase
     .from("escrows")
-    .select("*")
+    .select("id, post_id, status, buyer_id")
     .eq("id", id)
     .eq("buyer_id", req.user.id)
     .single();
@@ -1537,7 +1576,7 @@ app.post("/api/posts", requireAuth, async (req, res) => {
     .single();
 
   if (error) {
-    console.error("Post creation error:", error);
+    logger.error("Posts/create", error);
     return res.status(500).json({ error: "creation_failed" });
   }
 
