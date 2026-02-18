@@ -36,7 +36,37 @@
 
 ---
 
-## NEXT FEATURES
+## APP STORE LAUNCH (PRIORITY)
+
+### Phase 1: Production Setup (This Week)
+- [ ] Create production Supabase project
+- [ ] Activate Stripe production account
+- [ ] Configure EAS production build
+- [ ] Design app icons and splash screen
+- [ ] Write privacy policy & terms
+- [ ] Create App Store screenshots
+
+### Phase 2: Build & Test (Next Week)
+- [ ] Production iOS build via EAS
+- [ ] Production Android build via EAS
+- [ ] Device testing on physical phones
+- [ ] Fix any critical bugs
+- [ ] Performance optimization
+
+### Phase 3: Submit (Week 3)
+- [ ] App Store Connect setup
+- [ ] Google Play Console setup
+- [ ] Submit iOS app for review
+- [ ] Submit Android app for review
+- [ ] Prepare marketing materials
+
+### Post-Launch
+- [ ] Sentry error tracking
+- [ ] Analytics dashboard
+- [ ] Customer support system
+- [ ] ASO optimization
+
+## FUTURE FEATURES (Post-Launch)
 
 - [ ] Recurring jobs scheduling
 - [ ] Video chat integration (WebRTC)
