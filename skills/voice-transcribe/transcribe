@@ -1,0 +1,98 @@
+#!/usr/bin/env python3
+"""Transcribe audio using OpenAI's gpt-4o-mini-transcribe model."""
+
+import os
+import sys
+import hashlib
+from pathlib import Path
+
+try:
+    from openai import OpenAI
+except ImportError:
+    os.system("pip install openai -q")
+    from openai import OpenAI
+
+def get_cache_path(audio_path: str) -> Path:
+    """Get cache path based on file hash."""
+    with open(audio_path, 'rb') as f:
+        file_hash = hashlib.sha256(f.read()).hexdigest()
+    cache_dir = Path(__file__).parent / '.cache'
+    cache_dir.mkdir(exist_ok=True)
+    return cache_dir / f"{file_hash}.txt"
+
+def load_vocab():
+    """Load vocabulary hints."""
+    vocab_path = Path(__file__).parent / 'vocab.txt'
+    if vocab_path.exists():
+        return vocab_path.read_text().strip().split('\n')
+    return []
+
+def load_replacements():
+    """Load text replacements."""
+    repl_path = Path(__file__).parent / 'replacements.txt'
+    replacements = {}
+    if repl_path.exists():
+        for line in repl_path.read_text().strip().split('\n'):
+            if '->' in line:
+                wrong, right = line.split('->', 1)
+                replacements[wrong.strip()] = right.strip()
+    return replacements
+
+def transcribe(audio_path: str) -> str:
+    """Transcribe audio file."""
+    audio_path = Path(audio_path)
+    
+    if not audio_path.exists():
+        print(f"Error: File not found: {audio_path}", file=sys.stderr)
+        sys.exit(1)
+    
+    # Check cache
+    cache_path = get_cache_path(str(audio_path))
+    if cache_path.exists():
+        return cache_path.read_text().strip()
+    
+    # Load env
+    env_path = Path(__file__).parent / '.env'
+    if env_path.exists():
+        for line in env_path.read_text().strip().split('\n'):
+            if '=' in line and not line.startswith('#'):
+                key, value = line.split('=', 1)
+                os.environ[key] = value
+    
+    api_key = os.environ.get('OPENAI_API_KEY')
+    if not api_key:
+        print("Error: OPENAI_API_KEY not set", file=sys.stderr)
+        sys.exit(1)
+    
+    client = OpenAI(api_key=api_key)
+    
+    # Load vocab for prompt
+    vocab = load_vocab()
+    prompt = f"Transcribe this audio. Vocabulary: {', '.join(vocab)}" if vocab else None
+    
+    with open(audio_path, 'rb') as audio_file:
+        response = client.audio.transcriptions.create(
+            model="gpt-4o-mini-transcribe",
+            file=audio_file,
+            prompt=prompt
+        )
+    
+    text = response.text
+    
+    # Apply replacements
+    replacements = load_replacements()
+    for wrong, right in replacements.items():
+        text = text.replace(wrong, right)
+    
+    # Cache result
+    cache_path.write_text(text)
+    
+    return text
+
+if __name__ == "__main__":
+    if len(sys.argv) < 2:
+        print("Usage: transcribe <audio-file>", file=sys.stderr)
+        sys.exit(1)
+    
+    result = transcribe(sys.argv[1])
+    print(result)
