@@ -13,11 +13,11 @@
 **Completed:** 2026-02-18  
 **Notes:** Full website copy including hero, services grid, how it works, FAQ, about page, and contact page
 
-### 2. ⏳ google-business-profile-checklist.md
-**Status:** Not Started  
+### 2. ✅ google-business-profile-checklist.md
+**Status:** ✅ Complete  
 **Assigned:** Jarvis  
-**Due:** 2026-02-19  
-**Notes:** Optimization checklist for GBP setup and ongoing management
+**Completed:** 2026-02-18  
+**Notes:** Complete GBP setup guide with verification steps, optimization tactics, review management, and weekly maintenance checklist
 
 ### 3. ⏳ email-capture-form-copy.md
 **Status:** Not Started  
@@ -62,7 +62,8 @@
 
 | Date | Task | Commit |
 |------|------|--------|
-| 2026-02-18 | website-copy.md — Complete website copy | dde4697 |
+| 2026-02-18 | website-copy.md — Complete website copy | 06fc561 |
+| 2026-02-18 | google-business-profile-checklist.md — GBP optimization guide | e6c277e |
 
 ---
 
