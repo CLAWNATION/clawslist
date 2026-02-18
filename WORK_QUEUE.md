@@ -35,11 +35,11 @@
 **Due:** 2026-02-24  
 **Notes:** Convert lead-magnet-used-car-checklist.md to designed PDF
 
-### 5. ⏳ Mailchimp setup guide
-**Status:** Not Started  
+### 5. ✅ Mailchimp setup guide
+**Status:** ✅ Complete  
 **Assigned:** Jarvis  
-**Due:** 2026-02-25  
-**Notes:** Account setup + automation workflows
+**Completed:** 2026-02-18  
+**Notes:** Complete setup guide with account creation, audience setup, 5-email automation sequence, integrations, and ongoing newsletter strategy
 
 ### 6. ⏳ 3 SEO blog post outlines
 **Status:** Not Started  
