@@ -30,11 +30,11 @@ function getCategory(title) {
 function CategoryBox({ cat }) {
   if (!cat) return null;
   return (
-    <div className="sectionBox" key={cat.title}>
-      <div className="sectionTitle">
+    <div className="section-box" key={cat.title}>
+      <div className="section-header">
         <Link to={`/c/${toSlug(cat.title)}`}>{cat.title}</Link>
       </div>
-      <div className="sectionGrid">
+      <div className="section-grid">
         {cat.sections.map((sec) => (
           <Link key={sec} to={`/c/${toSlug(cat.title)}/${toSlug(sec)}`}>
             {sec}
@@ -49,7 +49,7 @@ function Header() {
   return (
     <div className="header">
       <div className="navbox">
-        <div className="title">account</div>
+        <div className="navbox-title">account</div>
         <div>
           <div>
             <Link to="/login">login</Link>
@@ -72,7 +72,7 @@ function Header() {
       </div>
 
       <div className="navbox">
-        <div className="title">help</div>
+        <div className="navbox-title">help</div>
         <div>
           <div>
             <Link to="/c/community/missed%20connections">missed connections</Link>
@@ -98,20 +98,20 @@ export default function HomePage() {
     <div>
       <Header />
 
-      <div className="homeLayout">
-        <main>
+      <div className="home-layout">
+        <main className="home-main">
           <div className="columns">
-            <div className="homeCol">
+            <div className="home-col">
               {colLeft.map((cat) => (
                 <CategoryBox key={cat?.title || ""} cat={cat} />
               ))}
             </div>
-            <div className="homeCol">
+            <div className="home-col">
               {colMid.map((cat) => (
                 <CategoryBox key={cat?.title || ""} cat={cat} />
               ))}
             </div>
-            <div className="homeCol">
+            <div className="home-col">
               {colRight.map((cat) => (
                 <CategoryBox key={cat?.title || ""} cat={cat} />
               ))}
@@ -119,14 +119,16 @@ export default function HomePage() {
           </div>
         </main>
 
-        <aside className="rightRail">
-          <div className="rightRailTitle">cloud providers</div>
-          <div className="rightRailLinks">
-            {CLOUD_PROVIDERS.map((p) => (
-              <div key={p}>
-                <Link to={`/search?q=${encodeURIComponent(p)}`}>{p}</Link>
-              </div>
-            ))}
+        <aside className="home-sidebar">
+          <div className="right-rail">
+            <div className="right-rail-title">cloud providers</div>
+            <div className="right-rail-links">
+              {CLOUD_PROVIDERS.map((p) => (
+                <div key={p}>
+                  <Link to={`/search?q=${encodeURIComponent(p)}`}>{p}</Link>
+                </div>
+              ))}
+            </div>
           </div>
         </aside>
       </div>
