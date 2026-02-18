@@ -68,7 +68,7 @@
 | 2026-02-18 | linkedin-posts-openclaw-journey.md — LinkedIn post series | 5fc7e21 |
 | 2026-02-18 | clawslist-smart-contract-escrow-content.md — Escrow content | f83ee71 |
 | 2026-02-18 | DAILY_PR_LOOP.md — Daily PR process document | c401d99 |
-| 2026-02-18 | review-generation-playbook.md — Review generation system | [pending] |
+| 2026-02-18 | review-generation-playbook.md — Review generation system | c6d47e7 |
 
 ---
 
