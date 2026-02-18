@@ -1,0 +1,568 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Honest Mechanic's Used Car Checklist</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap');
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            line-height: 1.6;
+            color: #1a1a1a;
+            background: #fff;
+        }
+        
+        .page {
+            width: 8.5in;
+            min-height: 11in;
+            padding: 0.75in;
+            margin: 0 auto;
+            background: #fff;
+            position: relative;
+        }
+        
+        /* Cover Page */
+        .cover {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            min-height: 9.5in;
+            background: linear-gradient(135deg, #1e3a5f 0%, #2d5a87 100%);
+            color: white;
+            margin: -0.75in;
+            padding: 0.75in;
+        }
+        
+        .cover-icon {
+            font-size: 80px;
+            margin-bottom: 30px;
+        }
+        
+        .cover h1 {
+            font-size: 42px;
+            font-weight: 800;
+            margin-bottom: 20px;
+            line-height: 1.2;
+        }
+        
+        .cover-subtitle {
+            font-size: 24px;
+            font-weight: 400;
+            margin-bottom: 40px;
+            opacity: 0.9;
+        }
+        
+        .cover-badge {
+            background: #ff6b35;
+            color: white;
+            padding: 15px 30px;
+            border-radius: 50px;
+            font-weight: 700;
+            font-size: 18px;
+            margin-bottom: 40px;
+        }
+        
+        .cover-features {
+            text-align: left;
+            font-size: 16px;
+            line-height: 2;
+        }
+        
+        .cover-features li {
+            list-style: none;
+            padding-left: 30px;
+            position: relative;
+        }
+        
+        .cover-features li:before {
+            content: "✓";
+            position: absolute;
+            left: 0;
+            color: #4ade80;
+            font-weight: bold;
+        }
+        
+        .cover-footer {
+            margin-top: 60px;
+            font-size: 14px;
+            opacity: 0.8;
+        }
+        
+        /* Content Pages */
+        .header {
+            border-bottom: 3px solid #1e3a5f;
+            padding-bottom: 15px;
+            margin-bottom: 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .header-logo {
+            font-weight: 800;
+            font-size: 20px;
+            color: #1e3a5f;
+        }
+        
+        .header-title {
+            font-size: 12px;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        h2 {
+            font-size: 28px;
+            font-weight: 700;
+            color: #1e3a5f;
+            margin-bottom: 20px;
+            margin-top: 40px;
+        }
+        
+        h2:first-child {
+            margin-top: 0;
+        }
+        
+        h3 {
+            font-size: 18px;
+            font-weight: 700;
+            color: #2d5a87;
+            margin-bottom: 12px;
+            margin-top: 25px;
+        }
+        
+        p {
+            margin-bottom: 15px;
+            font-size: 11pt;
+        }
+        
+        .intro {
+            background: #f8fafc;
+            border-left: 4px solid #ff6b35;
+            padding: 20px;
+            margin-bottom: 30px;
+            font-size: 12pt;
+        }
+        
+        .checklist-item {
+            margin-bottom: 25px;
+            padding: 20px;
+            background: #fff;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            page-break-inside: avoid;
+        }
+        
+        .checklist-header {
+            display: flex;
+            align-items: flex-start;
+            margin-bottom: 15px;
+        }
+        
+        .checklist-number {
+            background: #1e3a5f;
+            color: white;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 14px;
+            margin-right: 15px;
+            flex-shrink: 0;
+        }
+        
+        .checklist-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: #1e3a5f;
+            margin-top: 5px;
+        }
+        
+        .checklist-action {
+            font-size: 11pt;
+            color: #666;
+            font-style: italic;
+            margin-bottom: 12px;
+        }
+        
+        .red-flags {
+            background: #fef2f2;
+            border: 1px solid #fecaca;
+            border-radius: 6px;
+            padding: 15px;
+            margin: 12px 0;
+        }
+        
+        .red-flags-title {
+            font-weight: 700;
+            color: #dc2626;
+            margin-bottom: 10px;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .red-flags ul {
+            list-style: none;
+            margin: 0;
+        }
+        
+        .red-flags li {
+            padding-left: 25px;
+            position: relative;
+            margin-bottom: 8px;
+            font-size: 11pt;
+        }
+        
+        .red-flags li:before {
+            content: "☐";
+            position: absolute;
+            left: 0;
+            color: #dc2626;
+        }
+        
+        .why-matters {
+            background: #eff6ff;
+            border-left: 3px solid #3b82f6;
+            padding: 12px 15px;
+            margin-top: 12px;
+            font-size: 10.5pt;
+        }
+        
+        .why-matters strong {
+            color: #1e40af;
+        }
+        
+        .tip {
+            background: #f0fdf4;
+            border: 1px solid #86efac;
+            border-radius: 6px;
+            padding: 12px 15px;
+            margin-top: 12px;
+            font-size: 10.5pt;
+        }
+        
+        .tip strong {
+            color: #166534;
+        }
+        
+        .page-break {
+            page-break-before: always;
+        }
+        
+        .scoring-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            font-size: 11pt;
+        }
+        
+        .scoring-table th {
+            background: #1e3a5f;
+            color: white;
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+        }
+        
+        .scoring-table td {
+            padding: 12px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        
+        .scoring-table tr:nth-child(even) {
+            background: #f9fafb;
+        }
+        
+        .repair-costs {
+            background: #fffbeb;
+            border: 1px solid #fcd34d;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        
+        .repair-costs h3 {
+            color: #92400e;
+            margin-top: 0;
+        }
+        
+        .cost-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            font-size: 10.5pt;
+        }
+        
+        .cost-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px dotted #d1d5db;
+        }
+        
+        .bring-list {
+            background: #f3f4f6;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        
+        .bring-list ul {
+            list-style: none;
+            margin: 0;
+        }
+        
+        .bring-list li {
+            padding: 8px 0 8px 30px;
+            position: relative;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        
+        .bring-list li:last-child {
+            border-bottom: none;
+        }
+        
+        .bring-list li:before {
+            content: "☐";
+            position: absolute;
+            left: 0;
+            color: #6b7280;
+            font-size: 16px;
+        }
+        
+        .footer-cta {
+            background: #1e3a5f;
+            color: white;
+            padding: 30px;
+            border-radius: 8px;
+            text-align: center;
+            margin-top: 40px;
+        }
+        
+        .footer-cta h3 {
+            color: white;
+            margin-top: 0;
+            font-size: 20px;
+        }
+        
+        .footer-cta p {
+            margin: 10px 0;
+            opacity: 0.9;
+        }
+        
+        .footer-cta .phone {
+            font-size: 24px;
+            font-weight: 700;
+            margin: 15px 0;
+        }
+        
+        .watermark {
+            position: fixed;
+            bottom: 20px;
+            right: 30px;
+            font-size: 10px;
+            color: #ccc;
+        }
+        
+        @media print {
+            .page {
+                margin: 0;
+                box-shadow: none;
+            }
+            
+            .no-print {
+                display: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- COVER PAGE -->
+    <div class="page">
+        <div class="cover">
+            <div class="cover-icon">🚗</div>
+            <h1>The Honest Mechanic's<br>Used Car Checklist</h1>
+            <p class="cover-subtitle">A 15-Point Inspection Guide<br>Before You Buy</p>
+            <div class="cover-badge">SAVE $1,000s ON YOUR NEXT CAR</div>
+            <ul class="cover-features">
+                <li>The same checklist our ASE-certified mechanics use</li>
+                <li>Spot hidden problems before you hand over cash</li>
+                <li>Negotiate with confidence using repair cost data</li>
+                <li>Printable format — bring it to every test drive</li>
+            </ul>
+            <div class="cover-footer">
+                <p><strong>Express Auto Repair</strong></p>
+                <p>Honest, reliable auto care in [Your City]</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- INTRODUCTION PAGE -->
+    <div class="page page-break">
+        <div class="header">
+            <div class="header-logo">🔧 Express Auto Repair</div>
+            <div class="header-title">Used Car Checklist</div>
+        </div>
+        
+        <h2>Introduction</h2>
+        
+        <div class="intro">
+            <strong>Buying a used car?</strong> Don't get stuck with someone else's problem. This checklist is the same one our mechanics use when evaluating pre-purchase inspections. It's saved our customers thousands in surprise repair bills.
+        </div>
+        
+        <h3>How to Use This Checklist</h3>
+        <ul style="margin-left: 20px; margin-bottom: 20px;">
+            <li style="margin-bottom: 10px;">Print it out and bring it to the test drive</li>
+            <li style="margin-bottom: 10px;">Check off each item as you inspect</li>
+            <li style="margin-bottom: 10px;">If 3+ items are questionable, walk away or negotiate hard</li>
+            <li style="margin-bottom: 10px;">Take photos of any red flags for negotiation</li>
+        </ul>
+        
+        <h3>The Golden Rule</h3>
+        <p style="font-size: 14pt; font-style: italic; text-align: center; padding: 20px; background: #fef3c7; border-radius: 8px; margin: 20px 0;">
+            "Trust your gut. If something feels off, walk away. There are always other cars."
+        </p>
+        
+        <div class="bring-list">
+            <h3>📋 What to Bring on Your Test Drive</h3>
+            <ul>
+                <li>This checklist (printed)</li>
+                <li>Flashlight (phone flashlight works)</li>
+                <li>Paper towel (for fluid checks)</li>
+                <li>OBD scanner (optional, $20 on Amazon)</li>
+                <li>Quarter (for tread depth check)</li>
+                <li>Friend (second set of eyes)</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- CHECKLIST ITEMS 1-5 -->
+    <div class="page page-break">
+        <div class="header">
+            <div class="header-logo">🔧 Express Auto Repair</div>
+            <div class="header-title">The 15-Point Checklist</div>
+        </div>
+
+        <!-- Item 1 -->
+        <div class="checklist-item">
+            <div class="checklist-header">
+                <div class="checklist-number">1</div>
+                <div class="checklist-title">Cold Start Behavior</div>
+            </div>
+            <div class="checklist-action">Let the car sit overnight, then start it first thing in the morning</div>
+            <div class="red-flags">
+                <div class="red-flags-title">Red Flags — Check if present:</div>
+                <ul>
+                    <li>Hard starting (cranks more than 3 seconds)</li>
+                    <li>Rough idle that doesn't smooth out in 30 seconds</li>
+                    <li>Knocking or ticking sounds</li>
+                    <li>Blue smoke from exhaust (burning oil)</li>
+                </ul>
+            </div>
+            <div class="why-matters">
+                <strong>Why it matters:</strong> Cold-start issues often mean expensive engine or fuel system problems.
+            </div>
+        </div>
+
+        <!-- Item 2 -->
+        <div class="checklist-item">
+            <div class="checklist-header">
+                <div class="checklist-number">2</div>
+                <div class="checklist-title">Check Engine Light</div>
+            </div>
+            <div class="checklist-action">Look at the dashboard when you start the car</div>
+            <div class="red-flags">
+                <div class="red-flags-title">Red Flags — Check if present:</div>
+                <ul>
+                    <li>Light stays on after starting</li>
+                    <li>Light was "just reset" (ask for history)</li>
+                    <li>Seller refuses OBD scan</li>
+                </ul>
+            </div>
+            <div class="why-matters">
+                <strong>Why it matters:</strong> A check engine light could be a $50 sensor or a $3,000 catalytic converter.
+            </div>
+            <div class="tip">
+                <strong>Pro tip:</strong> Bring a $20 OBD scanner or ask AutoZone to scan it for free.
+            </div>
+        </div>
+
+        <!-- Item 3 -->
+        <div class="checklist-item">
+            <div class="checklist-header">
+                <div class="checklist-number">3</div>
+                <div class="checklist-title">Transmission Shifting</div>
+            </div>
+            <div class="checklist-action">Drive at various speeds. Feel for smooth acceleration</div>
+            <div class="red-flags">
+                <div class="red-flags-title">Red Flags — Check if present:</div>
+                <ul>
+                    <li>Hard or jerky shifts</li>
+                    <li>Delayed engagement (gas pedal to movement lag)</li>
+                    <li>Slipping RPMs without acceleration</li>
+                    <li>Strange noises in reverse</li>
+                </ul>
+            </div>
+            <div class="why-matters">
+                <strong>Why it matters:</strong> Transmission rebuilds cost $2,000-4,000. Don't skip this.
+            </div>
+        </div>
+
+        <!-- Item 4 -->
+        <div class="checklist-item">
+            <div class="checklist-header">
+                <div class="checklist-number">4</div>
+                <div class="checklist-title">Brake Feel and Response</div>
+            </div>
+            <div class="checklist-action">Test brakes at low speed in a safe area</div>
+            <div class="red-flags">
+                <div class="red-flags-title">Red Flags — Check if present:</div>
+                <ul>
+                    <li>Spongy or soft brake pedal</li>
+                    <li>Pulling to one side when braking</li>
+                    <li>Grinding or squealing noises</li>
+                    <li>Vibration in steering wheel when braking</li>
+                </ul>
+            </div>
+            <div class="why-matters">
+                <strong>Why it matters:</strong> Brakes are safety-critical. Issues here are non-negotiable repairs.
+            </div>
+        </div>
+
+        <!-- Item 5 -->
+        <div class="checklist-item">
+            <div class="checklist-header">
+                <div class="checklist-number">5</div>
+                <div class="checklist-title">Suspension and Steering</div>
+            </div>
+            <div class="checklist-action">Drive over bumps. Turn the wheel fully left and right</div>
+            <div class="red-flags">
+                <div class="red-flags-title">Red Flags — Check if present:</div>
+                <ul>
+                    <li>Clunking or knocking over bumps</li>
+                    <li>Steering wheel shakes at highway speeds</li>
+                    <li>Car drifts or requires constant correction</li>
+                    <li>Excessive body roll in turns</li>
+                </ul>
+            </div>
+            <div class="why-matters">
+                <strong>Why it matters:</strong> Suspension repairs add up fast ($500-1,500 per axle).
+            </div>
+        </div>
+    </div>
+</body>
+</html>

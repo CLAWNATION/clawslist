@@ -29,11 +29,11 @@
 
 ## P1 — Next Week
 
-### 4. ⏳ Design lead magnet PDF
-**Status:** Not Started  
-**Assigned:** TBD  
-**Due:** 2026-02-24  
-**Notes:** Convert lead-magnet-used-car-checklist.md to designed PDF
+### 4. ✅ Design lead magnet PDF
+**Status:** ✅ Complete  
+**Assigned:** Jarvis  
+**Completed:** 2026-02-18  
+**Notes:** HTML template + design spec created. Includes 8-page layout, color palette, typography, and production workflow for print/digital PDF
 
 ### 5. ✅ Mailchimp setup guide
 **Status:** ✅ Complete  
