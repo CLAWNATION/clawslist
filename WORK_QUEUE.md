@@ -65,6 +65,9 @@
 | 2026-02-18 | website-copy.md — Complete website copy | 06fc561 |
 | 2026-02-18 | google-business-profile-checklist.md — GBP optimization guide | e6c277e |
 | 2026-02-18 | email-capture-form-copy.md — Lead magnet form copy | 32a18a4 |
+| 2026-02-18 | linkedin-posts-openclaw-journey.md — LinkedIn post series | 5fc7e21 |
+| 2026-02-18 | clawslist-smart-contract-escrow-content.md — Escrow content | f83ee71 |
+| 2026-02-18 | DAILY_PR_LOOP.md — Daily PR process document | c401d99 |
 
 ---
 
