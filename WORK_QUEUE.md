@@ -51,7 +51,7 @@
 
 ## P2 — Month 1
 
-- [ ] Hire web developer brief (using website-audit-and-build-plan.md)
+- [x] Hire web developer brief (using website-audit-and-build-plan.md)
 - [x] Photography coordination guide
 - [x] Review generation system playbook
 - [ ] First ad campaign setup (Google Local Ads)
