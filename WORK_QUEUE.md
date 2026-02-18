@@ -70,6 +70,7 @@
 | 2026-02-18 | DAILY_PR_LOOP.md — Daily PR process document | c401d99 |
 | 2026-02-18 | review-generation-playbook.md — Review generation system | c6d47e7 |
 | 2026-02-18 | photography-coordination-guide.md — Photography coordination | c6ff02e |
+| 2026-02-18 | web-developer-brief.md — Web developer RFP | fbce34d |
 
 ---
 
