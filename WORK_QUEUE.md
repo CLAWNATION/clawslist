@@ -19,11 +19,11 @@
 **Completed:** 2026-02-18  
 **Notes:** Complete GBP setup guide with verification steps, optimization tactics, review management, and weekly maintenance checklist
 
-### 3. ⏳ email-capture-form-copy.md
-**Status:** Not Started  
+### 3. ✅ email-capture-form-copy.md
+**Status:** ✅ Complete  
 **Assigned:** Jarvis  
-**Due:** 2026-02-20  
-**Notes:** Copy for lead magnet signup forms (modal, inline, footer variants)
+**Completed:** 2026-02-18  
+**Notes:** Complete email capture copy for modal, inline, footer, exit-intent, and landing page variants plus welcome email
 
 ---
 
@@ -64,6 +64,7 @@
 |------|------|--------|
 | 2026-02-18 | website-copy.md — Complete website copy | 06fc561 |
 | 2026-02-18 | google-business-profile-checklist.md — GBP optimization guide | e6c277e |
+| 2026-02-18 | email-capture-form-copy.md — Lead magnet form copy | 32a18a4 |
 
 ---
 
