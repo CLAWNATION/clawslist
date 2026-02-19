@@ -6,3 +6,8 @@ build
 server/data
 client/dist
 .env.x_credentials
+
+# Nested project repositories
+clawslist/
+clawslist-clean/
+helping-hand/
