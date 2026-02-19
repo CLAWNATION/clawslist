@@ -71,6 +71,8 @@
 | 2026-02-18 | review-generation-playbook.md — Review generation system | c6d47e7 |
 | 2026-02-18 | photography-coordination-guide.md — Photography coordination | c6ff02e |
 | 2026-02-18 | web-developer-brief.md — Web developer RFP | fbce34d |
+| 2026-02-18 | google-local-ads-campaign-setup.md — Google Local Ads guide | 6a30baa |
+| 2026-02-18 | express-auto-financing-research.md — Financing research | a8a3fca |
 
 ---
 
