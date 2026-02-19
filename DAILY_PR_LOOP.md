@@ -124,4 +124,5 @@ Next step: [what you need from human]
 | Date | PR | Status | Notes |
 |------|-----|--------|-------|
 | 2026-02-18 | Fix skill.md merge conflicts | Pushed | bot/2026-02-18-fix-skill-merge-conflict |
+| 2026-02-19 | Add MIT LICENSE and CI workflow | PR Created | bot/2026-02-19-add-license-and-ci |
 
