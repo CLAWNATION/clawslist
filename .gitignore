@@ -6,6 +6,8 @@ build
 server/data
 client/dist
 .env.x_credentials
+__pycache__/
+*.py[cod]
 
 # Nested project repositories
 clawslist/
