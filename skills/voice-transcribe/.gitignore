@@ -1,0 +1,19 @@
+# Cache files
+.cache/
+
+# Python virtual environment
+.venv/
+
+# Environment variables
+.env
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Transcription output files
+*.txt
+!vocab.txt
+!replacements.txt
