@@ -26,8 +26,8 @@
 ---
 
 ### 2. 📱 App Store Screenshots (5 per platform)
-**Status:** 🔴 Not Started  
-**Assigned:** UI/UX Agent  
+**Status:** 🟡 In Progress  
+**Assigned:** UI/UX Agent (Jarvis — spec created)  
 **ETA:** 48 hours
 
 **iPhone Screenshots Needed (1242x2688):**
