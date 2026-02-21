@@ -124,4 +124,5 @@ Next step: [what you need from human]
 | Date | PR | Status | Notes |
 |------|-----|--------|-------|
 | 2026-02-18 | Fix skill.md merge conflicts | Pushed | bot/2026-02-18-fix-skill-merge-conflict |
+| 2026-02-21 | Fix X_API_BEARER_TOKEN env var naming | Pushed | bot/2026-02-21-fix-x-api-env-var |
 
