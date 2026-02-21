@@ -2,7 +2,7 @@
 
 **Mission:** Get Helping Hand to iOS App Store and Google Play Store  
 **Stack:** React Native (Expo)  
-**Last Updated:** 2026-02-21 11:10 UTC  
+**Last Updated:** 2026-02-21 12:10 UTC  
 **Status:** SWARM ACTIVATED — All agents on deck
 
 ---
@@ -224,19 +224,21 @@ eas submit --platform android --profile production
 ---
 
 ### 10. 📊 Post-Launch Monitoring
-**Status:** 🟡 In Progress  
+**Status:** ✅ COMPLETE (Configuration)  
 **Assigned:** Jarvis  
-**Completed:** 2026-02-21 11:10 UTC  
+**Completed:** 2026-02-21 12:10 UTC  
 **ETA:** Ongoing
 
 - [x] Sentry error tracking configured
 - [x] Analytics service created
-- [ ] Support email setup
-- [ ] Crash monitoring (Firebase)
+- [x] Support email setup (docs created)
+- [x] Crash monitoring — Firebase Crashlytics (service created)
 
 **Output:** 
 - `/helping-hand/services/sentryService.ts` — Sentry integration
 - `/helping-hand/services/analyticsService.ts` — Multi-provider analytics
+- `/helping-hand/services/crashlyticsService.ts` — Firebase Crashlytics
+- `/helping-hand/docs/SUPPORT_SETUP.md` — Support email guide
 
 **Setup required:**
 Sentry:
@@ -248,6 +250,16 @@ Analytics:
 1. Choose provider (Mixpanel/Amplitude/Firebase)
 2. Add EXPO_PUBLIC_ANALYTICS_PROVIDER and EXPO_PUBLIC_ANALYTICS_API_KEY
 3. Install provider SDK
+
+Crashlytics:
+1. Create Firebase project
+2. Add apps to Firebase
+3. Install: `npx expo install @react-native-firebase/crashlytics`
+
+Support Email:
+1. Choose provider (Google Workspace recommended)
+2. Configure support@helpinghand.app
+3. Set up DNS MX records
 
 ---
 
