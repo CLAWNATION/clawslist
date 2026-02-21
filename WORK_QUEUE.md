@@ -1,85 +1,254 @@
-# Work Queue — Express Auto Repair
+# Work Queue — Helping Hand App Store Launch 🚀
 
-**Last Updated:** 2026-02-21 05:10 UTC
-**Current Focus:** Foundation Phase Assets — All P0/P1 Complete ✅
-
----
-
-## P0 — Complete This Week
-
-### 1. ✅ website-copy.md — Homepage, About, Services Copy
-**Status:** ✅ Complete  
-**Assigned:** Jarvis  
-**Completed:** 2026-02-18  
-**Notes:** Full website copy including hero, services grid, how it works, FAQ, about page, and contact page
-
-### 2. ✅ google-business-profile-checklist.md
-**Status:** ✅ Complete  
-**Assigned:** Jarvis  
-**Completed:** 2026-02-18  
-**Notes:** Complete GBP setup guide with verification steps, optimization tactics, review management, and weekly maintenance checklist
-
-### 3. ✅ email-capture-form-copy.md
-**Status:** ✅ Complete  
-**Assigned:** Jarvis  
-**Completed:** 2026-02-18  
-**Notes:** Complete email capture copy for modal, inline, footer, exit-intent, and landing page variants plus welcome email
+**Mission:** Get Helping Hand to iOS App Store and Google Play Store  
+**Stack:** React Native (Expo)  
+**Last Updated:** 2026-02-21 05:15 UTC  
+**Status:** SWARM ACTIVATED — All agents on deck
 
 ---
 
-## P1 — Next Week
+## P0 — CRITICAL PATH (Do First)
 
-### 4. ✅ Design lead magnet PDF
-**Status:** ✅ Complete  
-**Assigned:** Jarvis  
-**Completed:** 2026-02-18  
-**Notes:** HTML template + design spec created. Includes 8-page layout, color palette, typography, and production workflow for print/digital PDF
+### 1. 🎨 App Assets & Branding
+**Status:** 🟡 In Progress  
+**Assigned:** Design Agent  
+**ETA:** 24 hours
 
-### 5. ✅ Mailchimp setup guide
-**Status:** ✅ Complete  
-**Assigned:** Jarvis  
-**Completed:** 2026-02-18  
-**Notes:** Complete setup guide with account creation, audience setup, 5-email automation sequence, integrations, and ongoing newsletter strategy
+- [ ] Create 1024x1024 app icon (iOS + Android)
+- [ ] Create 1242x2436 splash screen
+- [ ] Create Android adaptive icon foreground (432x432)
+- [ ] Create Android adaptive icon background (432x432)
+- [ ] Update app.json with new assets
+- [ ] Generate all required sizes via `npx expo prebuild`
 
-### 6. ✅ 3 SEO blog post outlines
-**Status:** ✅ Complete  
-**Assigned:** Jarvis  
-**Completed:** 2026-02-18  
-**Notes:** Complete outlines for check engine light, oil change intervals, and brake repair costs with full content structure, SEO guidance, and implementation checklist
+**Output:** `/helping-hand/assets/images/app-icon.png`, `splash.png`, etc.
 
 ---
 
-## P2 — Month 1
+### 2. 📱 App Store Screenshots (5 per platform)
+**Status:** 🔴 Not Started  
+**Assigned:** UI/UX Agent  
+**ETA:** 48 hours
 
-- [x] Hire web developer brief (using website-audit-and-build-plan.md)
-- [x] Photography coordination guide
-- [x] Review generation system playbook
-- [x] First ad campaign setup (Google Local Ads)
+**iPhone Screenshots Needed (1242x2688):**
+1. Home/Job feed screen
+2. Helper profile with ratings
+3. Messaging interface
+4. Booking/request flow
+5. Payment confirmation
 
----
+**Android Screenshots (1080x1920):**
+- Same 5 screens, Android UI
 
-## Completed This Session
-
-| Date | Task | Commit |
-|------|------|--------|
-| 2026-02-18 | website-copy.md — Complete website copy | 06fc561 |
-| 2026-02-18 | google-business-profile-checklist.md — GBP optimization guide | e6c277e |
-| 2026-02-18 | email-capture-form-copy.md — Lead magnet form copy | 32a18a4 |
-| 2026-02-18 | linkedin-posts-openclaw-journey.md — LinkedIn post series | 5fc7e21 |
-| 2026-02-18 | clawslist-smart-contract-escrow-content.md — Escrow content | f83ee71 |
-| 2026-02-18 | DAILY_PR_LOOP.md — Daily PR process document | c401d99 |
-| 2026-02-18 | review-generation-playbook.md — Review generation system | c6d47e7 |
-| 2026-02-18 | photography-coordination-guide.md — Photography coordination | c6ff02e |
-| 2026-02-18 | web-developer-brief.md — Web developer RFP | fbce34d |
-| 2026-02-18 | google-local-ads-campaign-setup.md — Google Local Ads guide | 6a30baa |
-| 2026-02-18 | express-auto-financing-research.md — Financing research | a8a3fca |
+**Feature Graphic (Android):**
+- 1024x500 banner image
 
 ---
 
-## Blockers
+### 3. 🔒 Privacy Policy & Terms
+**Status:** 🟢 Partial (docs exist)  
+**Assigned:** Legal/Content Agent  
+**ETA:** 12 hours
 
-None currently.
+- [ ] Review existing `PRIVACY_POLICY.md`
+- [ ] Review existing `TERMS_OF_SERVICE.md`
+- [ ] Host on website (privacy.helpinghand.app or helping-hand.app/privacy)
+- [ ] Update URLs in app store listings
 
 ---
 
-*Auto-generated from project trackers. Update after each commit.*
+### 4. ⚙️ Production Backend Setup
+**Status:** 🔴 Not Started  
+**Assigned:** Infra Agent  
+**ETA:** 24 hours
+
+**Supabase Production:**
+- [ ] Create new Supabase project (prod)
+- [ ] Migrate database schema
+- [ ] Copy RLS policies from dev
+- [ ] Set up production auth
+- [ ] Configure storage buckets
+- [ ] Get production API URL + anon key
+
+**Stripe Production:**
+- [ ] Activate Stripe account
+- [ ] Complete business verification
+- [ ] Get production publishable key
+- [ ] Configure 15% platform fee
+- [ ] Set up webhook endpoint
+
+---
+
+### 5. 📲 Developer Account Setup
+**Status:** 🔴 Not Started  
+**Assigned:** 0xBuildR (owner) + Infra Agent  
+**ETA:** 48 hours
+
+**Apple App Store Connect:**
+- [ ] Apple Developer Program ($99/year)
+- [ ] Create app record: "Helping Hand"
+- [ ] Bundle ID: `com.helpinghand.app`
+- [ ] Reserve app name
+- [ ] Add 0xBuildR as admin
+
+**Google Play Console:**
+- [ ] Google Play Developer Account ($25)
+- [ ] Create app listing
+- [ ] Package name: `com.helpinghand.app`
+- [ ] Add 0xBuildR as admin
+
+---
+
+## P1 — BUILD & TEST
+
+### 6. 🔧 EAS Build Configuration
+**Status:** 🟡 Partial (eas.json exists)  
+**Assigned:** Build Agent  
+**ETA:** 12 hours
+
+```json
+// Update eas.json with:
+{
+  "build": {
+    "production": {
+      "autoIncrement": true,
+      "env": {
+        "SUPABASE_URL": "production-url",
+        "STRIPE_PUBLISHABLE_KEY": "pk_live_..."
+      }
+    }
+  },
+  "submit": {
+    "production": {
+      "ios": { "ascAppId": "...", "ascTeamId": "..." },
+      "android": { "serviceAccountKeyPath": "..." }
+    }
+  }
+}
+```
+
+---
+
+### 7. 🧪 Production Build & Test
+**Status:** 🔴 Not Started  
+**Assigned:** QA Agent  
+**ETA:** 24 hours
+
+```bash
+# Commands to run:
+eas build --platform ios --profile production
+eas build --platform android --profile production
+```
+
+- [ ] iOS build succeeds
+- [ ] Android build succeeds
+- [ ] Test on physical iPhone
+- [ ] Test on physical Android
+- [ ] Verify push notifications work
+- [ ] Verify payments work
+- [ ] Check bundle size < 50MB
+
+---
+
+### 8. 📝 App Store Listing Content
+**Status:** 🔴 Not Started  
+**Assigned:** Content Agent  **ETA:** 8 hours
+
+**iOS App Store:**
+- [ ] App Name: "Helping Hand" (30 chars)
+- [ ] Subtitle: "Find local help, fast" (30 chars)
+- [ ] Description (4000 chars)
+- [ ] Keywords (100 chars)
+- [ ] Support URL
+- [ ] Privacy Policy URL
+- [ ] Demo account credentials
+
+**Google Play:**
+- [ ] App Title (50 chars)
+- [ ] Short Description (80 chars)
+- [ ] Full Description (4000 chars)
+
+---
+
+## P2 — SUBMIT & LAUNCH
+
+### 9. 🚀 Submit to App Stores
+**Status:** 🔴 Not Started  
+**ETA:** 24 hours after P0/P1 complete
+
+```bash
+# Submit commands:
+eas submit --platform ios --profile production
+eas submit --platform android --profile production
+```
+
+- [ ] iOS submitted for review
+- [ ] Android submitted for review
+- [ ] App Review Information complete
+- [ ] Notes for reviewer added
+
+---
+
+### 10. 📊 Post-Launch Monitoring
+**Status:** 🔴 Not Started  **ETA:** Ongoing
+
+- [ ] Sentry error tracking configured
+- [ ] Analytics dashboard ready
+- [ ] Support email setup
+- [ ] Crash monitoring (Firebase)
+
+---
+
+## SWARM ASSIGNMENTS
+
+| Agent | Role | Current Task | Status |
+|-------|------|--------------|--------|
+| Design | Visual Assets | App icons, splash screen | 🟡 Active |
+| UI/UX | Screenshots | 5 iOS + 5 Android screenshots | 🔴 Ready |
+| Infra | Backend | Production Supabase + Stripe | 🔴 Ready |
+| Content | Copy | App store descriptions, listing | 🔴 Ready |
+| Build | EAS/CI | Build config, binaries | 🔴 Ready |
+| QA | Testing | Device testing, bug fixes | 🔴 Ready |
+
+---
+
+## CRITICAL PATH TIMELINE
+
+| Day | Milestone |
+|-----|-----------|
+| Day 1 (Today) | App assets complete, Privacy/Terms hosted |
+| Day 2 | Production backend live, Developer accounts ready |
+| Day 3 | Screenshots complete, EAS builds configured |
+| Day 4 | Production builds created, device testing |
+| Day 5 | App store listings complete, submitted |
+| Day 6-8 | App review (iOS 1-3 days, Android 1-2 days) |
+| Day 9 | 🚀 GO LIVE |
+
+---
+
+## BLOCKERS
+
+| Issue | Impact | Owner | Resolution |
+|-------|--------|-------|------------|
+| Need Apple Developer Account | High | 0xBuildR | Enroll at developer.apple.com |
+| Need Google Play Account | High | 0xBuildR | Enroll at play.google.com/console |
+| Stripe Business Verification | Medium | 0xBuildR | Submit business docs to Stripe |
+
+---
+
+## NEXT ACTIONS (Immediate)
+
+1. **0xBuildR:** Enroll in Apple Developer Program + Google Play Console
+2. **Design Agent:** Create app icon + splash screen assets
+3. **Infra Agent:** Set up production Supabase project
+4. **Content Agent:** Finalize app store descriptions
+
+---
+
+**Repo:** github.com/0xMonsta/helping-hand  
+**Build Command:** `eas build --platform all --profile production`  
+**App Status:** Ready for production pipeline
+
+---
+
+*Last commit: Checking helping-hand repo...*
