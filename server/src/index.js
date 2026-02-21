@@ -12,8 +12,8 @@ import { generateReferenceCode, isValidReferenceCode, parseReferenceCode } from 
 dotenv.config();
 
 // Initialize X API client
-const xClient = process.env.X_BEARER_TOKEN 
-  ? new TwitterApi(process.env.X_BEARER_TOKEN)
+const xClient = process.env.X_API_BEARER_TOKEN 
+  ? new TwitterApi(process.env.X_API_BEARER_TOKEN)
   : null;
 
 const app = express();

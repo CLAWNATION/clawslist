@@ -12,7 +12,7 @@
 ```bash
 X_API_KEY=agKPV54pSBFLhoVSu16XFzK4x
 X_API_SECRET=i2CRdJwXiYAQw8qkQCs5mYbwlKRWZHFkqPMlz2lkP4IeMgNLg6
-X_BEARER_TOKEN=AAAAAAAAAAAAAAAAAAAAAJBP7gEAAAAAVSEQST0Ui33PbDMN8bQ5%2BuFAG2M%3DDtixPu01SxCysEoQccCLh2l6uOfoxVJW0GypeFrPEJ4jFcOmv3
+X_API_BEARER_TOKEN=AAAAAAAAAAAAAAAAAAAAAJBP7gEAAAAAVSEQST0Ui33PbDMN8bQ5%2BuFAG2M%3DDtixPu01SxCysEoQccCLh2l6uOfoxVJW0GypeFrPEJ4jFcOmv3
 ```
 
 ---
@@ -90,7 +90,7 @@ server/src/services/auth/controller.js # Add handlers
 // server/src/services/auth/xApi.js
 const { TwitterApi } = require('twitter-api-v2');
 
-const client = new TwitterApi(process.env.X_BEARER_TOKEN);
+const client = new TwitterApi(process.env.X_API_BEARER_TOKEN);
 
 async function getTweet(tweetId) {
   return client.v2.singleTweet(tweetId, {
