@@ -109,30 +109,39 @@
 ## P1 — BUILD & TEST
 
 ### 6. 🔧 EAS Build Configuration
-**Status:** 🟡 Partial (eas.json exists)  
-**Assigned:** Build Agent  
+**Status:** ✅ COMPLETE  
+**Assigned:** Jarvis  
+**Completed:** 2026-02-21 08:15 UTC  
 **ETA:** 12 hours
 
+- [x] Update eas.json with CLI version
+- [x] Add production environment variables
+- [x] Configure iOS submit (App Store Connect)
+- [x] Configure Android submit (Google Play)
+
+**Configuration:**
 ```json
-// Update eas.json with:
 {
+  "cli": { "version": ">= 7.0.0" },
   "build": {
     "production": {
       "autoIncrement": true,
       "env": {
-        "SUPABASE_URL": "production-url",
-        "STRIPE_PUBLISHABLE_KEY": "pk_live_..."
+        "EXPO_PUBLIC_SUPABASE_URL": "${SUPABASE_URL}",
+        "EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY": "${STRIPE_PUBLISHABLE_KEY}"
       }
     }
   },
   "submit": {
     "production": {
-      "ios": { "ascAppId": "...", "ascTeamId": "..." },
-      "android": { "serviceAccountKeyPath": "..." }
+      "ios": { "ascAppId": "${APPLE_APP_ID}", "ascTeamId": "${APPLE_TEAM_ID}" },
+      "android": { "track": "production" }
     }
   }
 }
 ```
+
+**Next:** Set EAS secrets with actual values via `eas secret:create`
 
 ---
 
