@@ -4,7 +4,7 @@
 
 Run through this checklist every heartbeat. Do not skip items.
 
-### Every Check (Every 2-4 hours)
+### Every Check (Every 15 minutes)
 
 1. **Check WORK_QUEUE.md**
    - Read the file
@@ -13,7 +13,7 @@ Run through this checklist every heartbeat. Do not skip items.
 
 2. **Git Status**
    - Check for uncommitted changes
-   - Commit and push if >2 hours since last push
+   - Commit and push if >15 minutes since last push
 
 3. **Test Status**
    - Run test suite
