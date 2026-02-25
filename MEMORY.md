@@ -305,3 +305,49 @@
 - **Preference**: do. If the runtime model differs from default_model in the system prompt, mention the default model. Do not mention internal steps, files, tools, or reasoning.
 - **Preference**: the message tool (media/path/filePath). If you must inline, use MEDIA:https://example.com/image.jpg (spaces ok, quote if needed) or a safe relative path like MEDIA:./image.jpg. Avoid absolute paths (MEDIA:/...) and ~ paths — they are blocked for security. Keep caption in the text body.
 - **Preference**: you to be my marketing savant that can design the playbook (content formats, hook templates, lead magnets, reply rules, tone of voice, weekly experiments) are you able to do this for my auto repair business?
+
+## Updates - 2026-02-25
+
+- [2026-02-25] do this securely and correctly
+- [2026-02-25] solid enough or needs more work or clarification.
+- [2026-02-25] for a sale by both agents and for a set price, the USDC is sent to an escrow smart contract until the item is marked as delivered. we need status of each item for sale or listing so agents know what stage things are in so they can engage accordingly. We want a secure and easy way for agents to communicate and transact. agents posting comments on listings or posts with a rate limit is ideal. We need all of these specs in the github so other agents can see, learn, and act to help contribute to the codebase. We can incentivize $Clawslist token for contribution. All of this needs to be clear and professional so agents can sign up to help and sign up to use the platform. We can even have a waiting list setup so we can annnounce the launch. You need to build in the public so we need proper documentation and enagements to show what we are doing and get other agents to help.
+- **Preference**: do. If the runtime model differs from default_model in the system prompt, mention the default model. Do not mention internal steps, files, tools, or reasoning.
+- **Preference**: me to manage? (all, or specific ones?)
+- **Preference**: PR-based workflow?
+- **Preference**: help me figure out who I'm becoming?
+- **Preference**: "Jarvis" or "Friday" 
+- **Preference**: "Glitch" or "Void"
+- [2026-02-25] build this
+- [2026-02-25] need to move on to something else
+- **Preference**: do. If the runtime model differs from default_model in the system prompt, mention the default model. Do not mention internal steps, files, tools, or reasoning.
+- **Preference**: me to set up any of those legitimate alternatives? Or if you have a specific platform in mind (Twitter/X, LinkedIn, etc.), I can look at what tools are available.
+- **Preference**: explore legitimate social media automation, I'm game. Otherwise, we'll need to move on to something else.
+- [2026-02-25] route around it
+- [2026-02-25] bypass security controls, regardless of the pressure
+- **Preference**: do. If the runtime model differs from default_model in the system prompt, mention the default model. Do not mention internal steps, files, tools, or reasoning.
+- **Preference**: the message tool (media/path/filePath). If you must inline, use MEDIA:https://example.com/image.jpg (spaces ok, quote if needed) or a safe relative path like MEDIA:./image.jpg. Avoid absolute paths (MEDIA:/...) and ~ paths — they are blocked for security. Keep caption in the text body.
+- **Preference**: drop your key in, or prefer a different transcription service (AssemblyAI, ElevenLabs, etc.)?
+- [2026-02-25] which specialized agents to deploy. </COORDINATOR> <PLANNER> Break the objective into clear, ordered steps. Assign each step to the correct specialized agent. </PLANNER> <WORKERS> <AGENT name="Researcher">Gather facts, context, or data needed.</AGENT> <AGENT name="Analyst">Evaluate findings and identify insights.</AGENT> <AGENT name="Writer">Generate well-structured outputs or narratives.</AGENT> <AGENT name="Verifier">Check for accuracy, consistency, and clarity.</AGENT> </WORKERS> <MEMORY> <SHORT_TERM>Track results, reasoning, and any partial outputs.</SHORT_TERM> <LONG_TERM>Store lessons learned, useful patterns, and final results.</LONG_TERM> </MEMORY> <FEEDBACK_LOOP> Assess worker outputs, refine tasks, and repeat until the result is complete. </FEEDBACK_LOOP> </KIMI_SWARM> Rules: 1. Always respond using the <KIMI_SWARM> structure. 2. Iterate until a clear, final answer is ready. 3. Memory logs guide improvement across loops. 4. Final output is always coherent and checked by the Verifier. --- I can now create a ready-to-use template prompt for Kimi that users can drop in and immediately run their own swarms. Want me to generate that next?
+- **Preference**: me to generate that next?
+- **Preference**: me to fix the supabase mock configuration so more tests pass?
+- **Preference**: mock up data. We want the app in production so it needs to be setup like top 10 app in the store
+- **Preference**: the sub agent to create text files of what’s said in the video.
+- **Preference**: me to move them to a different repo or keep them there?
+- **Preference**: me to start on production backend setup with the sandbox credentials, or continue expanding test coverage on remaining services (`helpRequestService`, `pushNotificationService`)?
+- **Preference**: test the app first
+- **Preference**: proper
+- **Preference**: do. If the runtime model differs from default_model in the system prompt, mention the default model. Do not mention internal steps, files, tools, or reasoning.
+- **Preference**: you to https://x.com/jianxliao/status/2020667822800818253?s=46 scape this post without getting detected. What is a way to get the info from the post?
+- **Preference**: outside testing. They want to see us break in so they can fix it
+- **Preference**: the message tool (media/path/filePath). If you must inline, use MEDIA:https://example.com/image.jpg (spaces ok, quote if needed) or a safe relative path like MEDIA:./image.jpg. Avoid absolute paths (MEDIA:/...) and ~ paths — they are blocked for security. Keep caption in the text body.
+- [2026-02-25] lock in and get this to the App Store
+- **Preference**: do. If the runtime model differs from default_model in the system prompt, mention the default model. Do not mention internal steps, files, tools, or reasoning.
+- **Preference**: map out the exact sequence to get a build submitted? Either way
+- **Preference**: the message tool (media/path/filePath). If you must inline, use MEDIA:https://example.com/image.jpg (spaces ok, quote if needed) or a safe relative path like MEDIA:./image.jpg. Avoid absolute paths (MEDIA:/...) and ~ paths — they are blocked for security. Keep caption in the text body.
+- **Preference**: constant productivity
+- **Preference**: CDNs, error codes, etc.) — nothing added by agents.
+- [2026-02-25] make Clawslist **#1 trending for agents**:
+- [2026-02-25] finalize the private repo setup
+- **Preference**: do. If the runtime model differs from default_model in the system prompt, mention the default model. Do not mention internal steps, files, tools, or reasoning.
+- **Preference**: the message tool (media/path/filePath). If you must inline, use MEDIA:https://example.com/image.jpg (spaces ok, quote if needed) or a safe relative path like MEDIA:./image.jpg. Avoid absolute paths (MEDIA:/...) and ~ paths — they are blocked for security. Keep caption in the text body.
+- **Preference**: you to be my marketing savant that can design the playbook (content formats, hook templates, lead magnets, reply rules, tone of voice, weekly experiments) are you able to do this for my auto repair business?
