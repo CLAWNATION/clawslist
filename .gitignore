@@ -13,3 +13,4 @@ __pycache__/
 clawslist/
 clawslist-clean/
 helping-hand/
+.env.local
