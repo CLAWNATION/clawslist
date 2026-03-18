@@ -7,6 +7,21 @@
 
 ---
 
+## 📊 STATUS DASHBOARD
+
+**Live Dashboard:** `public/dashboard.html`
+
+View real-time status without Telegram notifications:
+- Test suite status
+- Git status & recent commits  
+- Blocker tracking
+- Work queue progress
+- Launch readiness percentage
+
+Open in browser or deploy to GitHub Pages for online access.
+
+---
+
 ## P0 — CRITICAL PATH (Do First)
 
 ### 1. 🎨 App Assets & Branding
