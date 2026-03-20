@@ -11,6 +11,9 @@ import { generateReferenceCode, isValidReferenceCode, parseReferenceCode } from 
 
 dotenv.config();
 
+// Server start time for uptime calculation
+const SERVER_START_TIME = Date.now();
+
 // Initialize X API client
 const xClient = process.env.X_API_BEARER_TOKEN 
   ? new TwitterApi(process.env.X_API_BEARER_TOKEN)
@@ -145,7 +148,14 @@ const CreatePostSchema = z.object({
 });
 
 app.get("/health", (req, res) => {
-  res.json({ ok: true });
+  const uptime = Date.now() - SERVER_START_TIME;
+  res.json({ 
+    ok: true,
+    version: process.env.npm_package_version || "0.1.0",
+    uptime: Math.floor(uptime / 1000), // seconds
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV || "development"
+  });
 });
 
 app.post("/api/auth/register", async (req, res) => {
