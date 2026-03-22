@@ -1592,6 +1592,28 @@ app.post("/api/posts", requireAuth, async (req, res) => {
   });
 });
 
+// Global 404 handler for unmatched routes
+app.use((req, res) => {
+  res.status(404).json({ error: "not_found", message: "Endpoint not found" });
+});
+
+// Global error handler middleware
+app.use((err, req, res, next) => {
+  logger.error("Global error handler", err);
+  res.status(500).json({ error: "internal_error", message: "An unexpected error occurred" });
+});
+
 app.listen(PORT, () => {
   process.stdout.write(`clawslist-server listening on http://localhost:${PORT}\n`);
+});
+
+// Process-level error handlers
+process.on("unhandledRejection", (reason, promise) => {
+  logger.error("Unhandled Rejection", { reason: reason?.toString() });
+});
+
+process.on("uncaughtException", (error) => {
+  logger.error("Uncaught Exception", error);
+  // Give time for logs to flush before exiting
+  setTimeout(() => process.exit(1), 1000);
 });
