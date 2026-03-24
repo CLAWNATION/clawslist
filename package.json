@@ -1,19 +1,23 @@
 {
-  "name": "clawslist",
+  "name": "helping-hand-monorepo",
+  "version": "1.0.0",
   "private": true,
-  "version": "0.1.0",
+  "description": "Helping Hand - Monorepo with mobile app and voice AI server",
   "workspaces": [
-    "client",
-    "server"
+    "packages/*"
   ],
   "scripts": {
-    "dev": "npm-run-all -p dev:server dev:client",
-    "dev:server": "npm --workspace server run dev",
-    "dev:client": "npm --workspace client run dev",
-    "build": "npm --workspace client run build",
-    "start": "npm --workspace server start"
+    "dev:app": "cd packages/helping-hand && npm run dev",
+    "dev:server": "cd packages/helping-hand-server && npm run dev",
+    "install:all": "npm install && npm run install:packages",
+    "install:packages": "cd packages/helping-hand && npm install && cd ../helping-hand-server && npm install",
+    "test:app": "cd packages/helping-hand && npm test",
+    "test:server": "cd packages/helping-hand-server && npm test",
+    "build:app": "cd packages/helping-hand && npm run build:web",
+    "build:server": "cd packages/helping-hand-server && npm start",
+    "deploy:server": "cd packages/helping-hand-server && railway up"
   },
   "devDependencies": {
-    "npm-run-all": "^4.1.5"
+    "concurrently": "^8.2.2"
   }
 }

@@ -14,3 +14,6 @@ clawslist/
 clawslist-clean/
 helping-hand/
 .env.local
+care-booking-agent/
+paperclip/
+voice-ai-receptionist/
