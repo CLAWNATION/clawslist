@@ -1,4 +1,22 @@
 
+## Updates - 2026-03-24
+
+### Helping Hand - Voice AI + Monorepo Restructure
+- **Monorepo Structure Created**: Separated mobile app and server into independent packages
+  - `packages/helping-hand/` - React Native mobile app
+  - `packages/helping-hand-server/` - Voice AI + SMS + Payments server
+- **Voice AI Receptionist Built**: Open-source replacement for n8n workflow #3427
+  - Handles inbound calls via Twilio/Vapi
+  - Google Calendar integration for scheduling
+  - Email confirmations
+- **Care Booking Agent**: Full voice intake → SMS → E-Sign → Payments flow
+  - AI voice conversations for care needs intake
+  - SMS follow-ups with booking confirmations
+  - DocuSign/HelloSign e-signature integration
+  - Stripe payment processing
+- **PR Created**: Server error handling improvements (request logging, 404 handler, graceful shutdown)
+- **Status**: All P0/P1 development complete - BLOCKED on developer accounts (Apple Developer Program, Google Play Console, Stripe verification)
+
 ## Updates - 2026-02-17
 
 ### Helping Hand - 24/7 Production Swarm Active
