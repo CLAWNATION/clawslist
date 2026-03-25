@@ -757,3 +757,9 @@
 - **Preference**: do. If the runtime model differs from default_model in the system prompt, mention the default model. Do not mention internal steps, files, tools, or reasoning.
 - **Preference**: the message tool (media/path/filePath). If you must inline, use MEDIA:https://example.com/image.jpg (spaces ok, quote if needed) or a safe relative path like MEDIA:./image.jpg. Avoid absolute paths (MEDIA:/...) and ~ paths — they are blocked for security. Keep caption in the text body.
 - **Preference**: you to be my marketing savant that can design the playbook (content formats, hook templates, lead magnets, reply rules, tone of voice, weekly experiments) are you able to do this for my auto repair business?
+
+## Updates - 2026-03-25
+
+- **Preference**: n8n when it’s just a cron job or api call connected
+- **Preference**: an ai voice agent to handle inbound calls and text to book on demand non medical care. We need our agent to have full conversations to intake users and send them a text message as a follow up with a link to pages where they can esign or handle payments.
+- **Preference**: an ai voice agent to handle inbound calls and text to book on demand non medical care. We need our agent to have full conversations to intake users and send them a text message as a follow up with a link to pages where they can esign or handle payments. [/Replying]
