@@ -127,4 +127,5 @@ Next step: [what you need from human]
 | 2026-02-19 | Add MIT LICENSE and CI workflow | PR Created | bot/2026-02-19-add-license-and-ci |
 | 2026-02-21 | Fix X_API_BEARER_TOKEN env var naming | Pushed | bot/2026-02-21-fix-x-api-env-var |
 | 2026-03-24 | Server error handling & logging | Pushed | bot/2026-03-24-server-error-handling |
+| 2026-03-27 | Sentry error tracking integration | Pushed | bot/2026-03-27-sentry-error-integration |
 
