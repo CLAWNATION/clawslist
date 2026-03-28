@@ -763,3 +763,12 @@
 - **Preference**: n8n when it’s just a cron job or api call connected
 - **Preference**: an ai voice agent to handle inbound calls and text to book on demand non medical care. We need our agent to have full conversations to intake users and send them a text message as a follow up with a link to pages where they can esign or handle payments.
 - **Preference**: an ai voice agent to handle inbound calls and text to book on demand non medical care. We need our agent to have full conversations to intake users and send them a text message as a follow up with a link to pages where they can esign or handle payments. [/Replying]
+
+## Updates - 2026-03-28
+
+- **Preference**: n8n when it’s just a cron job or api call connected
+- **Preference**: an ai voice agent to handle inbound calls and text to book on demand non medical care. We need our agent to have full conversations to intake users and send them a text message as a follow up with a link to pages where they can esign or handle payments.
+- **Preference**: an ai voice agent to handle inbound calls and text to book on demand non medical care. We need our agent to have full conversations to intake users and send them a text message as a follow up with a link to pages where they can esign or handle payments. [/Replying]
+- **Preference**: SKF demo on our server with a test link so I can share with my team
+- **Preference**: me to add SSL (HTTPS) or a custom domain?
+- **Preference**: me to do that?
