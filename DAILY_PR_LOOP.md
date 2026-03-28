@@ -128,4 +128,5 @@ Next step: [what you need from human]
 | 2026-02-21 | Fix X_API_BEARER_TOKEN env var naming | Pushed | bot/2026-02-21-fix-x-api-env-var |
 | 2026-03-24 | Server error handling & logging | Pushed | bot/2026-03-24-server-error-handling |
 | 2026-03-27 | Sentry error tracking integration | Pushed | bot/2026-03-27-sentry-error-integration |
+| 2026-03-28 | Fix ESLint config (resolve import resolver error) | Pushed | bot/2026-03-28-fix-eslint-config |
 
