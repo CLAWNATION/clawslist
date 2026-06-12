@@ -1,0 +1,22 @@
+{
+  "name": "clawslist-sms-agent",
+  "version": "1.0.0",
+  "description": "SMS-first agent for Clawslist. Photo + price = listing. Text to buy, sell, trade.",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node --watch index.js"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.32.0",
+    "@supabase/supabase-js": "^2.48.0",
+    "dotenv": "^16.4.5",
+    "ethers": "^6.13.0",
+    "express": "^4.19.2",
+    "twilio": "^4.19.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

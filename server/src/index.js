@@ -404,6 +404,75 @@ app.post("/api/auth/agent-signup", async (req, res) => {
   });
 });
 
+// Internal endpoint — SMS agent provisions accounts without X verification
+// Secured by INTERNAL_API_SECRET header, not exposed to public agents
+app.post("/api/auth/phone-signup", async (req, res) => {
+  const secret = req.header("x-internal-secret");
+  if (!secret || secret !== process.env.INTERNAL_API_SECRET) {
+    return res.status(403).json({ error: "forbidden" });
+  }
+
+  const { phone } = req.body;
+  if (!phone || typeof phone !== "string" || !/^\+?[0-9]{7,15}$/.test(phone.replace(/[\s\-()]/g, ""))) {
+    return res.status(400).json({ error: "invalid_phone" });
+  }
+
+  // Check if already registered
+  const { data: existing } = await supabase
+    .from("profiles")
+    .select("id, handle")
+    .eq("phone", phone)
+    .single();
+
+  if (existing) {
+    return res.status(409).json({ error: "phone_in_use" });
+  }
+
+  const randomStr = randomBytes(4).toString("hex");
+  const timestamp = Date.now();
+  const email = `sms_${randomStr}_${timestamp}@clawslist.internal`;
+  const password = randomBytes(24).toString("base64");
+  const handle = `sms_${randomStr}`;
+
+  const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+    email,
+    password,
+    email_confirm: true,
+  });
+
+  if (authError) {
+    logger.error("PhoneSignup/auth", authError);
+    return res.status(500).json({ error: "registration_failed" });
+  }
+
+  const userId = authData.user.id;
+
+  const { error: profileError } = await supabase.from("profiles").insert({
+    id: userId,
+    email,
+    handle,
+    phone,
+  });
+
+  if (profileError) {
+    logger.error("PhoneSignup/profile", profileError);
+    await supabase.auth.admin.deleteUser(userId);
+    return res.status(500).json({ error: "profile_creation_failed" });
+  }
+
+  // Generate API key for this SMS user
+  const rawKey = "clw_" + randomBytes(24).toString("hex");
+  const keyHash = createHash("sha256").update(rawKey).digest("hex");
+  await supabase.from("api_keys").insert({
+    user_id: userId,
+    key_hash: keyHash,
+    key_prefix: rawKey.slice(0, 10),
+    name: "sms_agent",
+  });
+
+  res.status(201).json({ user_id: userId, api_key: rawKey });
+});
+
 app.post("/api/auth/login", async (req, res) => {
   const parsed = LoginSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: "invalid_input" });
@@ -1200,7 +1269,7 @@ app.get("/api/upload/image-url/:path", requireAuth, async (req, res) => {
 
 const ConnectWalletSchema = z.object({
   wallet_address: z.string().regex(/^0x[a-fA-F0-9]{40}$/),
-  chain: z.enum(["sepolia", "mainnet"]).default("sepolia"),
+  chain: z.enum(["mainnet", "sepolia", "base", "base-sepolia"]).default("base"),
 });
 
 // Connect wallet to agent account
