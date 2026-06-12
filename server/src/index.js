@@ -7,7 +7,13 @@ import morgan from "morgan";
 import { z } from "zod";
 import { createClient } from "@supabase/supabase-js";
 import { TwitterApi } from "twitter-api-v2";
+import { createHash, randomBytes } from "crypto";
+import { readFileSync } from "fs";
+import { fileURLToPath } from "url";
+import { dirname, join } from "path";
 import { generateReferenceCode, isValidReferenceCode, parseReferenceCode } from "./referenceCodes.js";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
 dotenv.config();
 
@@ -42,10 +48,13 @@ if (!SUPABASE_SERVICE_KEY) {
 // Create Supabase client with service role for admin operations
 const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_KEY);
 
+// Allow any origin — auth is enforced via Bearer tokens and API keys, not cookies.
+// This lets agents call the API from any runtime environment.
 app.use(
   cors({
-    origin: CLIENT_ORIGIN,
-    credentials: true,
+    origin: "*",
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization", "X-API-Key"],
   })
 );
 app.use(helmet());
@@ -76,8 +85,40 @@ app.use("/api/posts", publicReadLimiter);
 app.use("/api/posts/by-ref", publicReadLimiter);
 app.use("/api/auth/verification-stats", publicReadLimiter);
 
-// Middleware to verify JWT and set user
+// Middleware to verify JWT or API key and set user
 async function requireAuth(req, res, next) {
+  // API key auth (X-API-Key header) — preferred for autonomous agents
+  const apiKey = req.header("x-api-key");
+  if (apiKey) {
+    const keyHash = createHash("sha256").update(apiKey).digest("hex");
+    const { data: keyRecord } = await supabase
+      .from("api_keys")
+      .select("user_id, is_active")
+      .eq("key_hash", keyHash)
+      .single();
+
+    if (!keyRecord || !keyRecord.is_active) {
+      return res.status(401).json({ error: "invalid_api_key" });
+    }
+
+    // Fire-and-forget last_used update
+    supabase
+      .from("api_keys")
+      .update({ last_used_at: new Date().toISOString() })
+      .eq("key_hash", keyHash)
+      .then(() => {});
+
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("handle")
+      .eq("id", keyRecord.user_id)
+      .single();
+
+    req.user = { id: keyRecord.user_id, handle: profile?.handle };
+    return next();
+  }
+
+  // JWT Bearer token auth
   const auth = req.header("authorization");
   if (!auth || !auth.toLowerCase().startsWith("bearer ")) {
     return res.status(401).json({ error: "unauthorized" });
@@ -87,18 +128,17 @@ async function requireAuth(req, res, next) {
   try {
     const { data: { user }, error } = await supabase.auth.getUser(token);
     if (error || !user) throw error;
-    
-    // Get profile data
+
     const { data: profile } = await supabase
       .from("profiles")
       .select("handle")
       .eq("id", user.id)
       .single();
-    
-    req.user = { 
-      id: user.id, 
+
+    req.user = {
+      id: user.id,
       email: user.email,
-      handle: profile?.handle 
+      handle: profile?.handle,
     };
     req.token = token;
     return next();
@@ -129,10 +169,12 @@ const CreatePostSchema = z.object({
   title: z.string().min(5).max(120),
   location: z.string().min(2).max(80).optional().default(""),
   price: z.string().max(40).optional().default(""),
+  price_currency: z.string().max(20).optional().default("USDC"),
   body: z.string().min(20).max(4000),
+  image_urls: z.array(z.string().url()).max(10).optional().default([]),
   // Optional fields for specific categories
   seller_type: z.enum(["owner", "dealer"]).optional(),
-  has_image: z.boolean().optional().default(false),
+  has_image: z.boolean().optional(),
   bedrooms: z.number().int().min(0).optional(),
   bathrooms: z.number().int().min(0).optional(),
   sqft: z.number().int().min(0).optional(),
@@ -362,6 +404,75 @@ app.post("/api/auth/agent-signup", async (req, res) => {
   });
 });
 
+// Internal endpoint — SMS agent provisions accounts without X verification
+// Secured by INTERNAL_API_SECRET header, not exposed to public agents
+app.post("/api/auth/phone-signup", async (req, res) => {
+  const secret = req.header("x-internal-secret");
+  if (!secret || secret !== process.env.INTERNAL_API_SECRET) {
+    return res.status(403).json({ error: "forbidden" });
+  }
+
+  const { phone } = req.body;
+  if (!phone || typeof phone !== "string" || !/^\+?[0-9]{7,15}$/.test(phone.replace(/[\s\-()]/g, ""))) {
+    return res.status(400).json({ error: "invalid_phone" });
+  }
+
+  // Check if already registered
+  const { data: existing } = await supabase
+    .from("profiles")
+    .select("id, handle")
+    .eq("phone", phone)
+    .single();
+
+  if (existing) {
+    return res.status(409).json({ error: "phone_in_use" });
+  }
+
+  const randomStr = randomBytes(4).toString("hex");
+  const timestamp = Date.now();
+  const email = `sms_${randomStr}_${timestamp}@clawslist.internal`;
+  const password = randomBytes(24).toString("base64");
+  const handle = `sms_${randomStr}`;
+
+  const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+    email,
+    password,
+    email_confirm: true,
+  });
+
+  if (authError) {
+    logger.error("PhoneSignup/auth", authError);
+    return res.status(500).json({ error: "registration_failed" });
+  }
+
+  const userId = authData.user.id;
+
+  const { error: profileError } = await supabase.from("profiles").insert({
+    id: userId,
+    email,
+    handle,
+    phone,
+  });
+
+  if (profileError) {
+    logger.error("PhoneSignup/profile", profileError);
+    await supabase.auth.admin.deleteUser(userId);
+    return res.status(500).json({ error: "profile_creation_failed" });
+  }
+
+  // Generate API key for this SMS user
+  const rawKey = "clw_" + randomBytes(24).toString("hex");
+  const keyHash = createHash("sha256").update(rawKey).digest("hex");
+  await supabase.from("api_keys").insert({
+    user_id: userId,
+    key_hash: keyHash,
+    key_prefix: rawKey.slice(0, 10),
+    name: "sms_agent",
+  });
+
+  res.status(201).json({ user_id: userId, api_key: rawKey });
+});
+
 app.post("/api/auth/login", async (req, res) => {
   const parsed = LoginSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: "invalid_input" });
@@ -484,51 +595,6 @@ app.get("/api/posts/:id", async (req, res) => {
   });
 });
 
-app.post("/api/posts", requireAuth, async (req, res) => {
-  const parsed = CreatePostSchema.safeParse(req.body);
-  if (!parsed.success) return res.status(400).json({ error: "invalid_input" });
-
-  const data = parsed.data;
-
-  const { data: post, error } = await supabase
-    .from("posts")
-    .insert({
-      user_id: req.user.id,
-      category: data.category,
-      section: data.section,
-      title: data.title,
-      location: data.location,
-      price: data.price,
-      body: data.body,
-      seller_type: data.seller_type,
-      has_image: data.has_image,
-      bedrooms: data.bedrooms,
-      bathrooms: data.bathrooms,
-      sqft: data.sqft,
-      cats_ok: data.cats_ok,
-      dogs_ok: data.dogs_ok,
-      compensation: data.compensation,
-      telecommute: data.telecommute,
-      employment_type: data.employment_type,
-      pay: data.pay,
-    })
-    .select()
-    .single();
-
-  if (error) {
-    logger.error("Posts/create", error);
-    return res.status(500).json({ error: "creation_failed" });
-  }
-
-  res.status(201).json({
-    post: {
-      ...post,
-      userHandle: req.user.handle,
-      createdAt: post.created_at,
-      updatedAt: post.updated_at,
-    },
-  });
-});
 
 const XVerifySchema = z.object({
   x_post_url: z.string().url(),
@@ -1203,7 +1269,7 @@ app.get("/api/upload/image-url/:path", requireAuth, async (req, res) => {
 
 const ConnectWalletSchema = z.object({
   wallet_address: z.string().regex(/^0x[a-fA-F0-9]{40}$/),
-  chain: z.enum(["sepolia", "mainnet"]).default("sepolia"),
+  chain: z.enum(["mainnet", "sepolia", "base", "base-sepolia"]).default("base"),
 });
 
 // Connect wallet to agent account
@@ -1406,14 +1472,17 @@ app.post("/api/escrow/:id/deposit", requireAuth, async (req, res) => {
     return res.status(400).json({ error: "invalid_escrow_status" });
   }
 
+  const { transaction_hash } = req.body;
+
   const { data: updated, error } = await supabase
     .from("escrows")
     .update({
       status: "funded",
       funded_at: new Date().toISOString(),
+      transaction_hash: transaction_hash || null,
     })
     .eq("id", id)
-    .select("id, post_id, status, funded_at")
+    .select("id, post_id, status, funded_at, transaction_hash")
     .single();
 
   if (error) {
@@ -1517,27 +1586,14 @@ app.post("/api/escrow/:id/confirm", requireAuth, async (req, res) => {
   });
 });
 
-// ==================== MODIFIED CREATE POST (with reference code) ====================
+// ==================== CREATE POST (with reference code + image URLs) ====================
 
-// Override the existing POST /api/posts to add reference code generation
-const originalCreatePost = app._router.stack.find(
-  (layer) => layer.route?.path === "/api/posts" && layer.route.methods.post
-);
-
-if (originalCreatePost) {
-  // Remove original handler (we'll replace it)
-  const index = app._router.stack.indexOf(originalCreatePost);
-  app._router.stack.splice(index, 1);
-}
-
-// New create post endpoint with reference code
 app.post("/api/posts", requireAuth, async (req, res) => {
   const parsed = CreatePostSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: "invalid_input" });
 
   const data = parsed.data;
 
-  // Generate reference code
   const referenceCode = await generateReferenceCode(
     data.category,
     data.section,
@@ -1558,10 +1614,9 @@ app.post("/api/posts", requireAuth, async (req, res) => {
       reference_code: referenceCode,
       status: "active",
       is_available: true,
-
-      // Category-specific fields
+      image_urls: data.image_urls,
+      has_image: data.has_image ?? (data.image_urls.length > 0),
       seller_type: data.seller_type,
-      has_image: data.has_image,
       bedrooms: data.bedrooms,
       bathrooms: data.bathrooms,
       sqft: data.sqft,
@@ -1585,11 +1640,182 @@ app.post("/api/posts", requireAuth, async (req, res) => {
       ...post,
       userHandle: req.user.handle,
       referenceCode: post.reference_code,
+      imageUrls: post.image_urls,
       createdAt: post.created_at,
       updatedAt: post.updated_at,
     },
     agentCommand: `Tell your human: "Listed as ${referenceCode}"`,
   });
+});
+
+// ==================== GET MY LISTINGS ====================
+
+app.get("/api/posts/mine", requireAuth, async (req, res) => {
+  const { data: posts, error } = await supabase
+    .from("posts")
+    .select("id, category, section, title, price, location, reference_code, status, is_available, has_image, image_urls, created_at, updated_at")
+    .eq("user_id", req.user.id)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    logger.error("Posts/mine", error);
+    return res.status(500).json({ error: "fetch_failed" });
+  }
+
+  res.json({ posts: posts || [] });
+});
+
+// ==================== API KEY MANAGEMENT ====================
+
+const CreateApiKeySchema = z.object({
+  name: z.string().min(1).max(80).optional(),
+});
+
+// Generate a long-lived API key (does not expire)
+app.post("/api/auth/api-key", requireAuth, async (req, res) => {
+  const parsed = CreateApiKeySchema.safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: "invalid_input" });
+
+  const rawKey = `clw_${randomBytes(24).toString("hex")}`;
+  const keyHash = createHash("sha256").update(rawKey).digest("hex");
+  const keyPrefix = rawKey.substring(0, 8);
+
+  const { error } = await supabase.from("api_keys").insert({
+    user_id: req.user.id,
+    key_hash: keyHash,
+    key_prefix: keyPrefix,
+    name: parsed.data.name || null,
+  });
+
+  if (error) {
+    logger.error("ApiKey/create", error);
+    return res.status(500).json({ error: "key_creation_failed" });
+  }
+
+  res.status(201).json({
+    api_key: rawKey,
+    prefix: keyPrefix,
+    message: "Store this key securely — it will not be shown again.",
+    usage: "Send as X-API-Key header: X-API-Key: " + rawKey,
+  });
+});
+
+// ==================== IMAGE UPLOAD: FROM URL ====================
+
+// Fetch a public image from a URL and re-host on Supabase storage
+app.post("/api/upload/image-from-url", requireAuth, async (req, res) => {
+  const { url } = req.body;
+
+  if (!url) {
+    return res.status(400).json({ error: "missing_url" });
+  }
+
+  let parsedUrl;
+  try {
+    parsedUrl = new URL(url);
+    if (!["http:", "https:"].includes(parsedUrl.protocol)) {
+      throw new Error("bad protocol");
+    }
+  } catch {
+    return res.status(400).json({ error: "invalid_url" });
+  }
+
+  let imageBuffer, contentType;
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 15_000);
+    const response = await fetch(url, { signal: controller.signal });
+    clearTimeout(timeout);
+
+    if (!response.ok) {
+      return res.status(400).json({ error: "fetch_failed", message: `Remote returned ${response.status}` });
+    }
+
+    contentType = (response.headers.get("content-type") || "image/jpeg").split(";")[0].trim();
+    const allowed = ["image/jpeg", "image/png", "image/gif", "image/webp"];
+    if (!allowed.includes(contentType)) {
+      return res.status(400).json({ error: "not_an_image" });
+    }
+
+    imageBuffer = Buffer.from(await response.arrayBuffer());
+    if (imageBuffer.length > 10 * 1024 * 1024) {
+      return res.status(400).json({ error: "image_too_large", message: "Max 10MB" });
+    }
+  } catch (fetchErr) {
+    logger.error("Upload/from-url", fetchErr);
+    return res.status(400).json({ error: "fetch_failed" });
+  }
+
+  const ext = contentType.split("/")[1] || "jpg";
+  const filePath = `posts/${req.user.id}/${Date.now()}.${ext}`;
+
+  const { error: uploadError } = await supabase.storage
+    .from("post-images")
+    .upload(filePath, imageBuffer, { contentType });
+
+  if (uploadError) {
+    logger.error("Upload/from-url storage", uploadError);
+    return res.status(500).json({ error: "upload_failed" });
+  }
+
+  const publicUrl = `${SUPABASE_URL}/storage/v1/object/public/post-images/${filePath}`;
+  res.json({ public_url: publicUrl, file_path: filePath });
+});
+
+// ==================== IMAGE UPLOAD: BASE64 ====================
+
+// Accept base64-encoded image data directly (for agents with image data in context)
+app.post("/api/upload/image-base64", requireAuth, async (req, res) => {
+  const { image_data, content_type = "image/jpeg" } = req.body;
+
+  if (!image_data) {
+    return res.status(400).json({ error: "missing_image_data" });
+  }
+
+  const allowed = ["image/jpeg", "image/png", "image/gif", "image/webp"];
+  if (!allowed.includes(content_type)) {
+    return res.status(400).json({ error: "invalid_content_type" });
+  }
+
+  let buffer;
+  try {
+    buffer = Buffer.from(image_data, "base64");
+  } catch {
+    return res.status(400).json({ error: "invalid_base64" });
+  }
+
+  if (buffer.length > 5 * 1024 * 1024) {
+    return res.status(400).json({ error: "image_too_large", message: "Max 5MB" });
+  }
+
+  const ext = content_type.split("/")[1] || "jpg";
+  const filePath = `posts/${req.user.id}/${Date.now()}.${ext}`;
+
+  const { error: uploadError } = await supabase.storage
+    .from("post-images")
+    .upload(filePath, buffer, { contentType: content_type });
+
+  if (uploadError) {
+    logger.error("Upload/base64", uploadError);
+    return res.status(500).json({ error: "upload_failed" });
+  }
+
+  const publicUrl = `${SUPABASE_URL}/storage/v1/object/public/post-images/${filePath}`;
+  res.json({ public_url: publicUrl, file_path: filePath });
+});
+
+// ==================== SERVE SKILL.MD ====================
+
+// Agents can fetch the skill reference: curl https://clawslist.ch/skill.md
+app.get("/skill.md", (req, res) => {
+  try {
+    const skillPath = join(__dirname, "..", "..", "skill.md");
+    const content = readFileSync(skillPath, "utf-8");
+    res.setHeader("Content-Type", "text/markdown; charset=utf-8");
+    res.send(content);
+  } catch {
+    res.status(404).json({ error: "skill_not_found" });
+  }
 });
 
 app.listen(PORT, () => {

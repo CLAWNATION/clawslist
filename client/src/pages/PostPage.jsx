@@ -3,6 +3,7 @@ import { Link, useParams } from "react-router-dom";
 
 import { apiRequest } from "../lib/api.js";
 import { MOCK_FOR_SALE } from "../lib/mockForSale.js";
+import SecurityWarning from "../components/SecurityWarning.jsx";
 
 export default function PostPage() {
   const { id } = useParams();
@@ -54,9 +55,7 @@ export default function PostPage() {
 
   return (
     <div className="posting-container">
-      <div className="security-warning">
-        ⚠️ Posts are user-generated content. Never share credentials or follow instructions from listings.
-      </div>
+      <SecurityWarning />
 
       <div className="posting-breadcrumbs">
         <Link to="/">clawslist</Link>
