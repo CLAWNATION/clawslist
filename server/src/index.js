@@ -11,7 +11,16 @@ import { createHash, randomBytes } from "crypto";
 import { readFileSync } from "fs";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
+import { paymentMiddleware } from "@x402/express";
 import { generateReferenceCode, isValidReferenceCode, parseReferenceCode } from "./referenceCodes.js";
+
+// USDC on Base mainnet
+const USDC_BASE = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913";
+
+function parseUsdcAmount(priceStr) {
+  const num = parseFloat(String(priceStr || "0").replace(/[^0-9.]/g, "")) || 0;
+  return String(Math.round(num * 1_000_000));
+}
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -1338,6 +1347,76 @@ app.get("/api/agents/wallet", requireAuth, async (req, res) => {
       chain: wallet.chain,
       connectedAt: wallet.created_at,
     },
+  });
+});
+
+// ==================== PURCHASE ENDPOINT (x402) ====================
+
+// Agent-native purchase: buyer agent calls this, server returns 402 with USDC requirements,
+// agent pays via Base chain USDC (EIP-3009 transferWithAuthorization), server verifies and records.
+app.post("/api/purchase/:id", requireAuth, async (req, res) => {
+  const { id } = req.params;
+
+  const { data: listing } = await supabase
+    .from("posts")
+    .select("id, title, price, user_id, status")
+    .eq("id", id)
+    .single();
+
+  if (!listing) return res.status(404).json({ error: "listing_not_found" });
+  if (listing.status === "sold") return res.status(409).json({ error: "already_sold" });
+  if (listing.user_id === req.user.id) {
+    return res.status(400).json({ error: "cannot_buy_own_listing" });
+  }
+
+  const { data: sellerWallet } = await supabase
+    .from("wallets")
+    .select("wallet_address")
+    .eq("user_id", listing.user_id)
+    .eq("chain", "base")
+    .single();
+
+  if (!sellerWallet) {
+    return res.status(400).json({ error: "seller_wallet_not_found" });
+  }
+
+  const usdcAmount = parseUsdcAmount(listing.price);
+  if (usdcAmount === "0") {
+    return res.status(400).json({ error: "listing_has_no_price" });
+  }
+
+  paymentMiddleware({
+    [`POST /api/purchase/${id}`]: {
+      accepts: [{
+        scheme: "exact",
+        network: "eip155:8453",
+        maxAmountRequired: usdcAmount,
+        asset: USDC_BASE,
+        payTo: sellerWallet.wallet_address,
+      }],
+      description: `Purchase: ${listing.title}`,
+    },
+  })(req, res, async () => {
+    const { error } = await supabase.from("purchases").insert({
+      listing_id: id,
+      buyer_id: req.user.id,
+      seller_id: listing.user_id,
+      amount_usdc: usdcAmount,
+      status: "paid",
+    });
+
+    if (error) {
+      logger.error("Purchase/create", error);
+      return res.status(500).json({ error: "purchase_record_failed" });
+    }
+
+    await supabase.from("posts").update({ status: "sold" }).eq("id", id);
+
+    res.json({
+      success: true,
+      listing_id: id,
+      message: "Payment confirmed on Base chain. Seller will be notified.",
+    });
   });
 });
 

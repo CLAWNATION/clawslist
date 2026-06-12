@@ -10,9 +10,9 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.32.0",
+    "@coinbase/agentkit": "^0.4.0",
     "@supabase/supabase-js": "^2.48.0",
     "dotenv": "^16.4.5",
-    "ethers": "^6.13.0",
     "express": "^4.19.2",
     "twilio": "^4.19.0"
   },

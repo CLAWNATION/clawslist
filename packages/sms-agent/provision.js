@@ -1,9 +1,8 @@
 import { createClient } from "@supabase/supabase-js";
-import { generateWallet, encryptPrivateKey } from "./wallet.js";
+import { getCdpWalletProvider } from "./wallet.js";
 
 const CLAWSLIST_API_URL = process.env.CLAWSLIST_API_URL || "https://clawslist-server.railway.app";
 const INTERNAL_API_SECRET = process.env.INTERNAL_API_SECRET;
-const WALLET_ENCRYPTION_SECRET = process.env.WALLET_ENCRYPTION_SECRET;
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
 
@@ -24,7 +23,6 @@ async function clawsApi(method, path, body) {
 }
 
 export async function getOrCreateUser(phone) {
-  // Return existing user if already provisioned
   const { data: existing } = await supabase
     .from("sms_users")
     .select("user_id, api_key, base_wallet_address")
@@ -33,44 +31,27 @@ export async function getOrCreateUser(phone) {
 
   if (existing) return existing;
 
-  // Create Clawslist account via internal endpoint
+  // Create Clawslist account (no X verification required for SMS users)
   const { user_id, api_key } = await clawsApi("POST", "/api/auth/phone-signup", { phone });
 
-  // Generate Base wallet
-  const walletData = generateWallet();
-  const encryptedKey = encryptPrivateKey(walletData.privateKey, WALLET_ENCRYPTION_SECRET, user_id);
+  // CDP provisions and manages wallet keys in TEE — no private key handling here
+  const walletProvider = await getCdpWalletProvider(user_id);
+  const walletAddress = await walletProvider.getAddress();
 
-  // Store encrypted wallet
-  await supabase.from("sms_wallets").insert({
-    user_id,
-    wallet_address: walletData.address.toLowerCase(),
-    encrypted_private_key: encryptedKey,
-    chain: "base",
-  });
-
-  // Register wallet with Clawslist API using the new user's API key
+  // Register wallet address with Clawslist
   const connectRes = await fetch(`${CLAWSLIST_API_URL}/api/agents/wallet`, {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "X-API-Key": api_key,
-    },
-    body: JSON.stringify({ wallet_address: walletData.address, chain: "base" }),
+    headers: { "Content-Type": "application/json", "X-API-Key": api_key },
+    body: JSON.stringify({ wallet_address: walletAddress, chain: "base" }),
   });
   if (!connectRes.ok) {
     const d = await connectRes.json().catch(() => ({}));
-    console.error("Failed to register wallet:", d.error || connectRes.status);
+    console.error("Wallet registration failed:", d.error || connectRes.status);
   }
 
-  // Persist sms_users record
   const { data: smsUser, error } = await supabase
     .from("sms_users")
-    .insert({
-      phone,
-      user_id,
-      api_key,
-      base_wallet_address: walletData.address.toLowerCase(),
-    })
+    .insert({ phone, user_id, api_key, base_wallet_address: walletAddress })
     .select("user_id, api_key, base_wallet_address")
     .single();
 

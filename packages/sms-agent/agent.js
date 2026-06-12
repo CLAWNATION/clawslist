@@ -1,5 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@supabase/supabase-js";
+import { getCdpWalletProvider, handleX402Payment } from "./wallet.js";
 
 const anthropic = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 const CLAWSLIST_API_URL = process.env.CLAWSLIST_API_URL || "https://clawslist-server.railway.app";
@@ -35,7 +36,7 @@ async function downloadMmsImage(mediaUrl) {
   return { base64: Buffer.from(buffer).toString("base64"), contentType };
 }
 
-function buildTools(apiKey) {
+function buildTools(apiKey, walletProvider) {
   const wrap = (fn) => async (input) => {
     try {
       return JSON.stringify(await fn(input));
@@ -73,6 +74,14 @@ function buildTools(apiKey) {
     confirm_receipt: wrap(({ escrow_id }) =>
       clawsApi("POST", `/api/escrows/${escrow_id}/confirm`, {}, apiKey)
     ),
+    purchase_listing: wrap(async ({ listing_id }) => {
+      const url = `${CLAWSLIST_API_URL}/api/purchase/${listing_id}`;
+      const headers = { "Content-Type": "application/json", "X-API-Key": apiKey };
+      const res = await handleX402Payment(url, "POST", headers, walletProvider);
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || `Purchase failed: ${res.status}`);
+      return data;
+    }),
   };
 }
 
@@ -182,6 +191,17 @@ const TOOL_SCHEMAS = [
       required: ["escrow_id"],
     },
   },
+  {
+    name: "purchase_listing",
+    description: "Purchase a listing by paying the seller in USDC on Base chain via x402. Handles the payment automatically using the user's CDP wallet. Use this when the user says they want to buy something and an offer has been agreed.",
+    input_schema: {
+      type: "object",
+      properties: {
+        listing_id: { type: "string", description: "The listing ID to purchase" },
+      },
+      required: ["listing_id"],
+    },
+  },
 ];
 
 async function loadHistory(userId) {
@@ -215,7 +235,8 @@ async function pruneHistory(userId) {
 }
 
 export async function runAgent({ userId, apiKey, walletAddress, messageText, mediaUrls = [] }) {
-  const tools = buildTools(apiKey);
+  const walletProvider = await getCdpWalletProvider(userId);
+  const tools = buildTools(apiKey, walletProvider);
   const history = await loadHistory(userId);
 
   // Build user content blocks — text + any MMS images

@@ -1,43 +1,86 @@
-import { Wallet } from "ethers";
-import { createHmac, createCipheriv, createDecipheriv, randomBytes } from "crypto";
+import { CdpEvmWalletProvider } from "@coinbase/agentkit";
+import { randomBytes } from "crypto";
 
-const ALGORITHM = "aes-256-gcm";
+const BASE_NETWORK = process.env.NODE_ENV === "production" ? "base-mainnet" : "base-sepolia";
 
-function deriveKey(encryptionSecret, userId) {
-  return createHmac("sha256", encryptionSecret).update(userId).digest();
+export async function getCdpWalletProvider(userId) {
+  return CdpEvmWalletProvider.configureWithWallet({
+    apiKeyId: process.env.CDP_API_KEY_ID,
+    apiKeySecret: process.env.CDP_API_KEY_SECRET,
+    walletSecret: process.env.CDP_WALLET_SECRET,
+    idempotencyKey: userId,
+    networkId: BASE_NETWORK,
+  });
 }
 
-export function generateWallet() {
-  const wallet = Wallet.createRandom();
-  return {
-    address: wallet.address,
-    privateKey: wallet.privateKey,
-    mnemonic: wallet.mnemonic?.phrase || null,
+// Signs a USDC transferWithAuthorization (EIP-3009) and retries the request with the payment.
+// Called automatically when the server returns 402 with a PAYMENT-REQUIRED header.
+export async function handleX402Payment(url, method, headers, walletProvider) {
+  const res = await fetch(url, { method, headers });
+  if (res.status !== 402) return res;
+
+  const reqHeader =
+    res.headers.get("x-payment-response") ||
+    res.headers.get("payment-required");
+  if (!reqHeader) throw new Error("402 with no payment requirements");
+
+  const raw = JSON.parse(Buffer.from(reqHeader, "base64").toString("utf8"));
+  const req = Array.isArray(raw) ? raw[0] : raw;
+
+  const from = await walletProvider.getAddress();
+  const nonce = `0x${randomBytes(32).toString("hex")}`;
+  const validBefore = BigInt(Math.floor(Date.now() / 1000) + 300);
+
+  const signature = await walletProvider.signTypedData({
+    domain: {
+      name: "USD Coin",
+      version: "2",
+      chainId: BASE_NETWORK === "base-mainnet" ? 8453 : 84532,
+      verifyingContract: req.asset,
+    },
+    types: {
+      TransferWithAuthorization: [
+        { name: "from", type: "address" },
+        { name: "to", type: "address" },
+        { name: "value", type: "uint256" },
+        { name: "validAfter", type: "uint256" },
+        { name: "validBefore", type: "uint256" },
+        { name: "nonce", type: "bytes32" },
+      ],
+    },
+    primaryType: "TransferWithAuthorization",
+    message: {
+      from,
+      to: req.payTo,
+      value: BigInt(req.maxAmountRequired),
+      validAfter: BigInt(0),
+      validBefore,
+      nonce,
+    },
+  });
+
+  const payload = {
+    x402Version: 1,
+    scheme: "exact",
+    network: req.network,
+    payload: {
+      signature,
+      authorization: {
+        from,
+        to: req.payTo,
+        value: req.maxAmountRequired,
+        validAfter: "0",
+        validBefore: String(validBefore),
+        nonce,
+      },
+    },
   };
-}
 
-export function encryptPrivateKey(privateKey, encryptionSecret, userId) {
-  const key = deriveKey(encryptionSecret, userId);
-  const iv = randomBytes(12);
-  const cipher = createCipheriv(ALGORITHM, key, iv);
-  const encrypted = Buffer.concat([
-    cipher.update(privateKey, "utf8"),
-    cipher.final(),
-  ]);
-  const authTag = cipher.getAuthTag();
-  return {
-    iv: iv.toString("hex"),
-    encrypted: encrypted.toString("hex"),
-    authTag: authTag.toString("hex"),
-  };
-}
-
-export function decryptPrivateKey(encryptedData, encryptionSecret, userId) {
-  const key = deriveKey(encryptionSecret, userId);
-  const iv = Buffer.from(encryptedData.iv, "hex");
-  const encrypted = Buffer.from(encryptedData.encrypted, "hex");
-  const authTag = Buffer.from(encryptedData.authTag, "hex");
-  const decipher = createDecipheriv(ALGORITHM, key, iv);
-  decipher.setAuthTag(authTag);
-  return decipher.update(encrypted) + decipher.final("utf8");
+  return fetch(url, {
+    method,
+    headers: {
+      ...headers,
+      "X-Payment": Buffer.from(JSON.stringify(payload)).toString("base64"),
+    },
+  });
 }
